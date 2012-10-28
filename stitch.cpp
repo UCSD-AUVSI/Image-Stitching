@@ -4,8 +4,32 @@
 #include <vector>
 #include "opencv2/stitching/stitcher.hpp"
 
+#define IMAGES_PER_STITCH 4
+
 using namespace std;
 using namespace cv;
+using namespace cv::detail;
+
+class ImageWithGPS{
+public:
+  ImageWithGPS(Mat image, Rect_<double> rect): image(image), rect(rect) {}
+  ImageWithGPS(Mat image, vector<vector<double> > corners): image(image) {
+     
+  }
+  Mat image;
+  Rect_<double> rect;
+};
+
+double distance(double x1, double y1, double x2, double y2){
+  return sqrt(pow(x2-x1,2) + pow(y2-y1,2));
+}
+
+double angle(double x1, double y1, double x2, double y2){
+  double dx = x2 - x1;
+  double dy = y2 - y1;
+  return tan(dy/dx);
+}
+
 
 vector<Mat> getTestDataForImage(Mat image,
     int rows,
@@ -53,26 +77,48 @@ vector<Mat> getTestDataForImage(Mat image,
 
 Mat iterativeStitch(Mat accumulatedImage, vector<Mat> newImages) {
   Mat result;
-  Stitcher stitcher = Stitcher::createDefault(true);
+  Stitcher stitcher = Stitcher::createDefault(false);
   newImages.push_back(accumulatedImage);
-  if ( stitcher.stitch(newImages,result) ){
-    cout <<"Stitch successful";
-    return result;
-    }
-  else
-    return accumulatedImage;
+  stitcher.stitch(newImages,result);
+  return result;
+}
+
+vector<ImageFeatures> findIntersectionFeatures(ImageWithGPS image1, ImageWithGPS image2) {
+  vector<ImageFeatures> result;
+  Rect_<double> intersection = image1.rect & image2.rect; 
+  cout << "Intersection: " << intersection.x << "," << intersection.y << "," <<
+       intersection.width << "," <<intersection.height <<endl;
+  if (intersection.width == 0 || intersection.height == 0 ){
+    cout <<"These images contain no intersection points";
+  }
+
+  double left = intersection.x + intersection.width / 3;
+  double right = intersection.x + 2 * intersection.width / 3;
+  double top = intersection.y + intersection.height / 3;
+  double bottom = intersection.y + 2 * intersection.height / 3;
+  
+  return result;
 }
 
 int main(){
 
-  Mat accumulator, pano;
-  vector<Mat> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2);
-  imwrite("a.jpg",images[0]);
-  imwrite("b.jpg",images[1]);
-  imwrite("c.jpg",images[2]);
-  imwrite("d.jpg",images[3]);
-  accumulator = images[3];
+  /*Mat accumulator, pano;
+  vector<Mat> images = getTestDataForImage(imread("image.jpg"),2,2,0.1,0.1);
+  pano = images.back();
   images.pop_back();
-  pano = iterativeStitch(accumulator,images);
-  imwrite("result.jpg",pano);
+  while ( images.size() > 0){
+    vector<Mat> temp;
+    for (int i = 0; i < IMAGES_PER_STITCH && images.size() > 0; i++){
+      temp.push_back(images.back());
+      images.pop_back();
+    }
+    pano = iterativeStitch(pano,temp);
+  }
+  imwrite("result.jpg",pano);*/
+  Mat temp;
+  Rect_<double> rect1(5,5,2,2);
+  Rect_<double> rect2(0,0,2,2);
+  ImageWithGPS image1 = ImageWithGPS(temp,rect1);
+  ImageWithGPS image2 = ImageWithGPS(temp,rect2);
+  findIntersectionFeatures(image1,image2);
 }
