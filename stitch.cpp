@@ -1,3 +1,11 @@
+#include "Stdafx.h"
+
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	return 0;
+}
+
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -7,11 +15,33 @@
 using namespace std;
 using namespace cv;
 
+class ImageWithGPS{
+	Mat image;
+	Rect_<double> rect;
+	vector<vector<double>> corners;
+	ImageWithGPS(Mat image, vector<vector<double>> corners): image(image){
+		double width = distance(corners[0][0], corners[0][1], corners[1][0], corners[1][1] );
+		double height = distance(corners[1][0], corners[1][1], corners[2][0],corners[2][1]);
+		double angle = angle(corners[0][0], corners[0][1], corners[1][0], corners[1][1] );
+        rect = getLargesRectangle(width,height,angle,0);
+	} 
+}
+
+double distance(double x1, double y1, double x2, double y2){
+    return sqrt(pow(x2-x1,2)+pow(y2-y1,2));
+}
+double angle(double x1, double y1, double x2, double y2){
+	double dy = y2-y1;
+	double dx = x2-x1;
+	return tan(dy/dx);
+}
+
 vector<Mat> getTestDataForImage(Mat image,
     int rows,
     int columns,
     double horizontalOverlap,
-    double verticalOverlap){
+    double verticalOverlap,
+	double scale){
   vector<Mat> resultImages = vector<Mat>(rows * columns);
   int normalWidth = image.cols / columns;
   int normalHeight = image.rows / rows;
@@ -24,6 +54,7 @@ vector<Mat> getTestDataForImage(Mat image,
   cout << "Overlap Width: " << overlapWidth <<"\n";
   cout << "Overlap Height: " << overlapHeight <<"\n";
   cout << endl;
+
   int imageX, imageY, imageWidth, imageHeight;
   for (int j = 0; j < rows; j++){
     for (int i = 0; i < columns; i++){
@@ -45,8 +76,15 @@ vector<Mat> getTestDataForImage(Mat image,
       cout <<"Width: "<<imageWidth<<"\n";
       cout <<"Height: "<<imageHeight<<"\n";
       cout <<endl;
-      resultImages[j * rows + i] = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
-    }
+      Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
+
+	  vector<double> ul; ul.push_back(imageY*scale); ul.push_back(imageX*scale);
+	  vector<double> ur; ur.push_back(imageY*scale); ur.push_back((imageX+imageWidth)*scale);
+	  vector<double> br; br.push_back((imageY+imageHeight)*scale); br.push_back(imageX+imageWidth*scale);
+	  vector<double> bl; bl.push_back((imageY+imageHeight)*scale); bl.push_back(imageX*scale);
+	  vector<vector<double>> coords; coords.push_back(ul); coords.push_back(ur);coords.push_back(br); coords.push_back(bl); 
+	  resultImages[rows * columns +j] = ImageWithGPS(result,coords);	  
+     }
   }
   return resultImages;
 }
@@ -55,18 +93,14 @@ Mat iterativeStitch(Mat accumulatedImage, vector<Mat> newImages) {
   Mat result;
   Stitcher stitcher = Stitcher::createDefault(true);
   newImages.push_back(accumulatedImage);
-  if ( stitcher.stitch(newImages,result) ){
-    cout <<"Stitch successful";
+  stitcher.stitch(newImages,result);
     return result;
-    }
-  else
-    return accumulatedImage;
 }
 
 int main(){
-
+	
   Mat accumulator, pano;
-  vector<Mat> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2);
+  vector<Mat> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0]);
   imwrite("b.jpg",images[1]);
   imwrite("c.jpg",images[2]);
@@ -75,4 +109,5 @@ int main(){
   images.pop_back();
   pano = iterativeStitch(accumulator,images);
   imwrite("result.jpg",pano);
+  
 }
