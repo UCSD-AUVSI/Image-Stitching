@@ -27,6 +27,23 @@ class ImageWithGPS{
 	} 
 }
 
+vector<ImageFeatures> findIntersectionFeatures(ImageWithGPS image1, ImageWithGPS image2) {
+  vector<ImageFeatures> result;
+  Rect_<double> intersection = image1.rect & image2.rect; 
+  cout << "Intersection: " << intersection.x << "," << intersection.y << "," <<
+       intersection.width << "," <<intersection.height <<endl;
+  if (intersection.width == 0 || intersection.height == 0 ){
+    cout <<"These images contain no intersection points";
+  }
+
+  double left = intersection.x + intersection.width / 3;
+  double right = intersection.x + 2 * intersection.width / 3;
+  double top = intersection.y + intersection.height / 3;
+  double bottom = intersection.y + 2 * intersection.height / 3;
+  
+  return result;
+}
+
 double distance(double x1, double y1, double x2, double y2){
     return sqrt(pow(x2-x1,2)+pow(y2-y1,2));
 }
@@ -111,3 +128,5 @@ int main(){
   imwrite("result.jpg",pano);
   
 }
+
+ 
