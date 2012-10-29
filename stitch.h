@@ -16,8 +16,9 @@ class ImageWithGPS{
 public:
 	Mat image;
 	Rect_<double> rect;//gps coor of image, x is origin latitude; y is origin longtitude; 
-	                     //width is latitude displacement; height is longittude displacement 
-
+	 //width is latitude displacement; height is longittude displacement
+	ImageWithGPS();
+	ImageWithGPS(Mat image, Rect_<double> rect);
 	ImageWithGPS(Mat imag, vector<vector<double>> corners);
 	vector<int> gpsToPixels(double lat, double lon );
 };

@@ -1,6 +1,5 @@
 
 
-
 int _tmain(int argc, _TCHAR* argv[])
 {
 	return 0;
@@ -11,7 +10,7 @@ int _tmain(int argc, _TCHAR* argv[])
 #include <highgui.h>
 #include <vector>
 #include "opencv2/stitching/stitcher.hpp"
-#include "rotateRect.cpp"
+#include "RotateRect.h"
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "stitch.h"
 
@@ -19,20 +18,22 @@ using namespace std;
 using namespace cv;
 using namespace cv::detail;
 
-
+    ImageWithGPS::ImageWithGPS(Mat image, Rect_<double> rect):image(image),rect(rect){
+	}
+	ImageWithGPS::ImageWithGPS(){}
 	ImageWithGPS::ImageWithGPS(Mat imag, vector<vector<double>> corners){
 		double width = distance(corners[0][0], corners[0][1], corners[1][0], corners[1][1] );
 		double height = distance(corners[1][0], corners[1][1], corners[2][0],corners[2][1]);
 		double ang = angle(corners[0][0], corners[0][1], corners[1][0], corners[1][1] );
         rect = getLargestRectangle(width,height,ang,0);
-	    Size size = Size(width, height);
+	    Size size = Size((int)width, (int)height);
 		this -> image = rotateImage(imag, ang,size);
 	}
 
 	vector<int> ImageWithGPS::gpsToPixels(double lat, double lon ){
       vector<int> result;   
-	  int x = (lon - rect.x)/ rect.width * image.cols; 
-	  int y = (rect.y - lat)/ rect.height* image.rows; 
+	  int x =(int)( (lon - rect.x)/ rect.width * image.cols); 
+	  int y = (int)((rect.y - lat)/ rect.height* image.rows); 
 	  result.push_back(x);
 	  result.push_back(y);
 	  return result;
@@ -54,7 +55,7 @@ ImageFeatures findIntersectionFeatures(ImageWithGPS image1, vector<ImageWithGPS>
   vector<Point2f> gpsData;
   vector<KeyPoint> all;
 
-  for (int i = 0; i< otherimages.size(); i++){
+  for (unsigned int i = 0; i< otherimages.size(); i++){
 	  if(&image1 == &otherimages[i]) continue;
 	  Rect_<double> intersection = image1.rect & otherimages[i].rect; 
   cout << "Intersection: " << intersection.x << "," << intersection.y << "," <<
@@ -63,18 +64,18 @@ ImageFeatures findIntersectionFeatures(ImageWithGPS image1, vector<ImageWithGPS>
     cout <<"These images contain no intersection points";
   }
 
-  double minLon = intersection.x + intersection.width / 3;
-  double maxLon = intersection.x + 2 * intersection.width / 3;
-  double maxLat = intersection.y - intersection.height / 3;
-  double minLat = intersection.y - 2 * intersection.height / 3;
+  float minLon = (float) (intersection.x + intersection.width / 3);
+  float maxLon = (float) (intersection.x + 2 * intersection.width / 3);
+  float maxLat = (float) (intersection.y - intersection.height / 3);
+  float minLat = (float) (intersection.y - 2 * intersection.height / 3);
   vector<int> ul = image1.gpsToPixels(maxLon, minLat);
   vector<int> ur = image1.gpsToPixels(maxLon, maxLat);
   vector<int> bl = image1.gpsToPixels(minLon, minLat);
   vector<int> br = image1.gpsToPixels(minLon, maxLat);
-  Point2f ulPoint = Point2f(ul[0], ul[1]);
-  Point2f urPoint = Point2f(ur[0], ur[1]);
-  Point2f blPoint = Point2f(bl[0], bl[1]);
-  Point2f brPoint = Point2f(br[0], br[1]);
+  Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
+  Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
+  Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
+  Point2f brPoint = Point2f((float)br[0], (float)br[1]);
   KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
   KeyPoint urKeyPt = KeyPoint(urPoint, 1);
   KeyPoint blKeyPt = KeyPoint(blPoint, 1);
@@ -95,7 +96,7 @@ ImageFeatures findIntersectionFeatures(ImageWithGPS image1, vector<ImageWithGPS>
   }
 
   Mat descriptors(all.size(),2,CV_32FC1);
-  for(int i =0; i < gpsData.size(); i++){
+  for(unsigned int i =0; i < gpsData.size(); i++){
 	  descriptors.push_back(gpsData[i].x);
 	  descriptors.push_back(gpsData[i].y);
   }
@@ -162,32 +163,45 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
 	  vector<double> br; br.push_back((imageY+imageHeight)*scale); br.push_back(imageX+imageWidth*scale);
 	  vector<double> bl; bl.push_back((imageY+imageHeight)*scale); bl.push_back(imageX*scale);
 	  vector<vector<double>> coords; coords.push_back(ul); coords.push_back(ur);coords.push_back(br); coords.push_back(bl); 
-	  resultImages[rows * columns +j] = ImageWithGPS(result,coords);	  
+	  resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
      }
   }
   return resultImages;
 }
 
 ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS> newImages) {
-  ImageWithGPS result;
+  Mat result;
+  Rect_<double> rect = accumulatedImage.rect;
+  vector<Mat> newVec(newImages.size()+1);
+  for(unsigned int i =0; i < newImages.size(); i++){
+    if(newImages[i].rect.x < rect.x)
+      rect.x = newImages[i].rect.x;
+	if(newImages[i].rect.y < rect.y)
+	  rect.y = newImages[i].rect.y;
+	if(newImages[i].rect.height+newImages[i].rect.y > rect.y+rect.height)
+		rect.height = newImages[i].rect.height+newImages[i].rect.y-rect.y;
+	if(newImages[i].rect.width+newImages[i].rect.x > rect.x+rect.width)
+		rect.width = newImages[i].rect.width+newImages[i].rect.x-rect.x;
+	newVec[i] = newImages[i].image;
+  }
   Stitcher stitcher = Stitcher::createDefault(true);
-  newImages.push_back(accumulatedImage);
-  stitcher.stitch(newImages,result);
-    return result;
+  newVec.push_back(accumulatedImage.image);
+  stitcher.stitch(newVec, result);
+    return ImageWithGPS(result,rect);
 }
 
 int main(){
 	
-  Mat accumulator, pano;
+  ImageWithGPS accumulator, pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0].image);
   imwrite("b.jpg",images[1].image);
   imwrite("c.jpg",images[2].image);
   imwrite("d.jpg",images[3].image);
-  accumulator = images[3].image;
+  accumulator = images[3];
   images.pop_back();
   pano = iterativeStitch(accumulator,images);
-  imwrite("result.jpg",pano);
+  imwrite("result.jpg",pano.image);
   
 }
 
