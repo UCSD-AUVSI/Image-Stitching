@@ -1,6 +1,5 @@
 #ifndef STITCH_H
 #define STITCH_H
-#include "stdafx.h"
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -15,11 +14,9 @@ using namespace cv::detail;
 class ImageWithGPS{
 public:
 	Mat image;
-	Rect_<double> rect;//gps coor of image, x is origin latitude; y is origin longtitude; 
-	 //width is latitude displacement; height is longittude displacement
+	vector<vector<double> > corners;
 	ImageWithGPS();
-	ImageWithGPS(Mat image, Rect_<double> rect);
-	ImageWithGPS(Mat imag, vector<vector<double>> corners);
+	ImageWithGPS(Mat image, vector<vector<double> > corners);
 	vector<int> gpsToPixels(double lat, double lon );
 };
 Mat rotateImage(const Mat &source, double angle, Size size);

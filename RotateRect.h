@@ -1,7 +1,6 @@
 #ifndef ROTATERECT_H
 #define ROTATERECT_H
 
-#include "stdafx.h"
 #include <highgui.h>
 #include <cv.h>
 
