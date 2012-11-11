@@ -1,3 +1,4 @@
+
 #include "StdAfx.h"
 #include <iostream>
 #include <cv.h>
@@ -8,7 +9,7 @@
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "stitch.h"
 #include "gpc.h"
-
+#include "math.h"
 
 using namespace std;
 using namespace cv;
@@ -17,20 +18,14 @@ using namespace cv::detail;
 ImageWithGPS::ImageWithGPS(){}
 ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){}
 
-vector<int> ImageWithGPS::gpsToPixels(ImageWithGPS img){
+vector<int> ImageWithGPS::gpsToPixels(double lat, double lon){
   vector<int> result;   
-  /*
-  int x = (int)((lon - rect.x)/ rect.width * image.cols); 
-  int y = (int)((rect.y - lat)/ rect.height* image.rows);
-
+  int x = scale * ((lon * cos(angle)) - (lat * sin(angle)));
+  int y = scale * ((lat * sin(angle)) - (lat * cos(angle)));
   result.push_back(x);
-  result.push_back(y);*/
-  double scale = scale_y(img);
-  
-
+  result.push_back(y);
   return result;
 }
-
 
 
 Mat rotateImage(const Mat &source, double angle, Size size){
@@ -75,31 +70,7 @@ vector<double> getExtremes (gpc_vertex* vertices){
 	result.push_back(maxLon);
 	return result;
 }
-vector<double> finding (gpc_polygon polygon){
-  vector<double> result;
-  
-  double x1 = polygon.contour[0].vertex[0].x;
-  double x2 = polygon.contour[0].vertex[1].x;
-  double x3 = polygon.contour[0].vertex[2].x;
-  double x4 = polygon.contour[0].vertex[3].x;
-  double y1 = polygon.contour[0].vertex[0].y;
-  double y2 = polygon.contour[0].vertex[1].y;
-  double y3 = polygon.contour[0].vertex[2].y;
-  double y4 = polygon.contour[0].vertex[3].y;
-  double arrayX [] = {x1,x2,x3,x4};   
-  double arrayY [] = {y1,y2,y3,y4};
- 
-  double maxLon = arrayX[3]-arrayX[0];
-  double minLat = arrayY[2]-arrayY[1];
-  double minLon = arrayX[2]-arrayX[1];
-  double maxLat = arrayY[3]-arrayY[0];
-  result.push_back(minLon);
-  result.push_back(minLat);
-  result.push_back(maxLon); 
-  result.push_back(maxLat);
-  
-  return result;
-}
+
 
 double scale_y(ImageWithGPS img){
 	double scale;
@@ -121,93 +92,75 @@ double scale_y(ImageWithGPS img){
     scale = img_y/y;
 	return scale;
 }
-double scale_x(ImageWithGPS img){
-	double scale;
-	double x1 = img.gpsPolygon.contour->vertex[0].x;
-	double y1 = img.gpsPolygon.contour->vertex[0].y; 
-	double x2 = img.gpsPolygon.contour->vertex[1].x;
-	double y2 = img.gpsPolygon.contour->vertex[1].y;
-	double x3 = img.gpsPolygon.contour->vertex[3].x;
-	double y3 = img.gpsPolygon.contour->vertex[3].y; 
-	
-	double distance_1 = distance(x1,y1,x2,y2);
-	double distance_2 = distance(x1,y1,x3,y3);
-	double x; double y;
-	if(distance_1 >= distance_2){ distance_1 = x; distance_2 = y} 
-	else {distance_1 = y; distance_2 = x;}
 
-	double img_x = img.image.cols;
-	double img_y = img.image.rows;
-    scale = img_x/x;
-	return scale;
-}
+class GPSFeaturesFinder: public FeaturesFinder {
+  public:
+    void operator ()(const Mat &image, ImageFeatures &features) {
+      vector<Point2f> gpsData;
+      vector<KeyPoint> all;
+      ImageWithGPS data;
 
-ImageFeatures findIntersectionFeatures(ImageWithGPS image1, vector<ImageWithGPS> otherimages, int img_idx) {
 
-  ImageFeatures result;
-  vector<Point2f> gpsData;
-  vector<KeyPoint> all;
-  gpc_op op = GPC_INT;
-  gpc_polygon polygon = image1.gpsPolygon;
-  gpc_polygon resultPoly;
-  vector<double> coord = getExtremes(polygon.contour->vertex);
+      for (auto element : otherImages ){
+        if ( element.image == image ) {
+          data = element;
+          break;
+        }
+      }
 
-  for (unsigned int i = 0; i< otherimages.size(); i++){
-    if(&image1 == &otherimages[i]) continue;
-    gpc_polygon* intersection;
-    gpc_polygon_clip(op, &image1.gpsPolygon, &polygon, &resultPoly);
+      for (unsigned int i = 0; i< otherimages.size(); i++){
+        if(image == &otherimages[i]) continue;
 
-     
-	float maxLon = (float) coord.back(); coord.pop_back();
-	float maxLat = (float) coord.back(); coord.pop_back();
-	float minLon = (float) coord.back(); coord.pop_back();
-	float minLat = (float) coord.back(); coord.pop_back();
+        gpc_polygon* intersection;
+        gpc_polygon_clip(&image.gpsPolygon, &otherimages[i].gpsPolygon,intersection);
+		vector<double> coord = getExtremes(polygon.contour->vertex);
 
-	/*
-    float maxLon = (float) (gpsPolygon.intersection.x + 2 * gpsPolygon.intersection.width / 3);
-    float maxLat = (float) (gpsPolygon.intersection.y - gpsPolygon.intersection.height / 3);
-    float minLat = (float) (gpsPolygon.intersection.y - 2 * gpsPolygon.intersection.height / 3);
-	*/
-    vector<int> ul = image1.gpsToPixels(maxLon, minLat);
-    vector<int> ur = image1.gpsToPixels(maxLon, maxLat);
-    vector<int> bl = image1.gpsToPixels(minLon, minLat);
-    vector<int> br = image1.gpsToPixels(minLon, maxLat);
+       float maxLon = (float) coord.back(); coord.pop_back();
+	   float maxLat = (float) coord.back(); coord.pop_back();
+	   float minLon = (float) coord.back(); coord.pop_back();
+	   float minLat = (float) coord.back(); coord.pop_back();
 
-    Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
-    Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
-    Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
-    Point2f brPoint = Point2f((float)br[0], (float)br[1]);
+        vector<int> ul = data.gpsToPixels(maxLon, minLat);
+        vector<int> ur = data.gpsToPixels(maxLon, maxLat);
+        vector<int> bl = data.gpsToPixels(minLon, minLat);
+        vector<int> br = data.gpsToPixels(minLon, maxLat);
 
-    KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
-    KeyPoint urKeyPt = KeyPoint(urPoint, 1);
-    KeyPoint blKeyPt = KeyPoint(blPoint, 1);
-    KeyPoint brKeyPt = KeyPoint(brPoint, 1);
+        Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
+        Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
+        Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
+        Point2f brPoint = Point2f((float)br[0], (float)br[1]);
 
-    all.push_back(ulKeyPt);
-    all.push_back(urKeyPt);
-    all.push_back(blKeyPt);
-    all.push_back(brKeyPt);
-    //ImageFeatures imageFeature1; imageFeature1.img_idx = img_idx1;
-    //ImageFeatures imageFeature2; imageFeature2.img_idx = img_idx2;
-    //imageFeature1.img_size = image1.image.size();
-    //imageFeature2.img_size = image2.image.size();
-    gpsData.push_back(Point2f (maxLon,minLat));
-    gpsData.push_back(Point2f (maxLon,maxLat));
-    gpsData.push_back(Point2f (minLon, minLat));
-    gpsData.push_back(Point2f (minLon,maxLat));
-  }
+        KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
+        KeyPoint urKeyPt = KeyPoint(urPoint, 1);
+        KeyPoint blKeyPt = KeyPoint(blPoint, 1);
+        KeyPoint brKeyPt = KeyPoint(brPoint, 1);
 
-  Mat descriptors(all.size(),2,CV_32FC1);
-  for(unsigned int i =0; i < gpsData.size(); i++){
-    descriptors.push_back(gpsData[i].x);
-    descriptors.push_back(gpsData[i].y);
-  }
-  result.img_idx = img_idx;
-  result.img_size =  image1.image.size();
-  result.keypoints = all;
-  result.descriptors = descriptors;
-  return result;
-}
+        all.push_back(ulKeyPt);
+        all.push_back(urKeyPt);
+        all.push_back(blKeyPt);
+        all.push_back(brKeyPt);
+
+ 
+        gpsData.push_back(Point2f (maxLon,minLat));
+        gpsData.push_back(Point2f (maxLon,maxLat));
+        gpsData.push_back(Point2f (minLon, minLat));
+        gpsData.push_back(Point2f (minLon,maxLat));
+      }
+
+      Mat descriptors(all.size(),2,CV_32FC1);
+
+      for(unsigned int i =0; i < gpsData.size(); i++){
+        descriptors.push_back(gpsData[i].x);
+        descriptors.push_back(gpsData[i].y);
+      }
+
+      features.img_idx = img_idx;
+      features.img_size =  image1.image.size();
+      features.keypoints = all;
+      features.descriptors = descriptors;
+    }
+};
+
 
 double distance(double x1, double y1, double x2, double y2){
   return sqrt(pow(x2-x1,2)+pow(y2-y1,2));
@@ -287,6 +240,7 @@ ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS>
     newVec[i] = newImages[i].image;
   }
   Stitcher stitcher = Stitcher::createDefault(true);
+
   newVec.push_back(accumulatedImage.image);
   stitcher.stitch(newVec, result);
   return ImageWithGPS(result,rect);
