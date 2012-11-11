@@ -6,13 +6,15 @@
 #include "RotateRect.h"
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "stitch.h"
+#include "gpc.h"
+
 
 using namespace std;
 using namespace cv;
 using namespace cv::detail;
 
 ImageWithGPS::ImageWithGPS(){}
-ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon): image(image),corners(corners){}
+ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){}
 
 vector<int> ImageWithGPS::gpsToPixels(double lat, double lon){
   vector<int> result;   
@@ -31,6 +33,20 @@ Mat rotateImage(const Mat &source, double angle, Size size){
   return dst;
 }
 
+vector<double> getExtremes (vertex* vertices){
+	double minLat = INT_MAX;
+	double minLon = INT_MAX;
+	double maxLat = INT_MIN;
+	double maxLon = INT_MIN;
+	for(int i = 0; i < 4; i++){
+		if (vertex[i].x < minLon ) minLon = vertex[i].x;
+		if (vertex[i].x > maxLon ) maxLon = vertex[i].x;
+		if (vertex[i].y < minLat ) minLat = vertex[i].y;
+	    if (vertex[i].y > maxLat ) maxLat = vertex[i].y;
+    }
+    return {minLon, minLat, maxLon, maxLat};
+}
+
 class GPSFeaturesFinder: public FeaturesFinder {
   public:
     void operator ()(const Mat &image, ImageFeatures &features) {
@@ -44,6 +60,7 @@ class GPSFeaturesFinder: public FeaturesFinder {
           break;
         }
       }
+
 
       for (unsigned int i = 0; i< otherimages.size(); i++){
         if(image == &otherimages[i]) continue;
@@ -188,7 +205,6 @@ ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS>
 }
 
 int main(){
-
   ImageWithGPS accumulator, pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0].image);
@@ -199,7 +215,4 @@ int main(){
   images.pop_back();
   pano = iterativeStitch(accumulator,images);
   imwrite("result.jpg",pano.image);
-
 }
-
-

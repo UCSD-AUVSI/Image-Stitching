@@ -12,18 +12,20 @@ using namespace cv;
 using namespace cv::detail;
 
 class ImageWithGPS{
-public:
-	Mat image;
-	vector<vector<double> > corners;
-	ImageWithGPS();
-	ImageWithGPS(Mat image, vector<vector<double> > corners);
-	vector<int> gpsToPixels(double lat, double lon );
+  public:
+    Mat image;
+    vector<vector<double> > corners;
+    ImageWithGPS();
+    ImageWithGPS(Mat image, vector<vector<double> > corners);
+    vector<int> gpsToPixels(double lat, double lon );
+  private:
+    double scale;
 };
 Mat rotateImage(const Mat &source, double angle, Size size);
 ImageFeatures findIntersectionFeatures(ImageWithGPS image1, 
-	vector<ImageWithGPS> otherimages, int img_idx);
+    vector<ImageWithGPS> otherimages, int img_idx);
 
-  
+
 double distance(double x1, double y1, double x2, double y2);
 double angle(double x1, double y1, double x2, double y2);
 vector<ImageWithGPS> getTestDataForImage(Mat image,
@@ -31,7 +33,7 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
     int columns,
     double horizontalOverlap,
     double verticalOverlap,
-	double scale);
+    double scale);
 ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS> newImages);
 int main();
 
