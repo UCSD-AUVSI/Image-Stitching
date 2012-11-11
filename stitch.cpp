@@ -16,11 +16,9 @@ ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon): image(image),corn
 
 vector<int> ImageWithGPS::gpsToPixels(double lat, double lon){
   vector<int> result;   
-  int x = (int)((lon - rect.x)/ rect.width * image.cols); 
-  int y = (int)((rect.y - lat)/ rect.height* image.rows); 
-  result.push_back(x);
-  result.push_back(y);
-  return result;
+  int x = scale * ((lon * cos(angle)) - (lat * sin(angle)));
+  int y = scale * ((lat * sin(angle)) - (lat * cos(angle)));
+  return {x,y};
 }
 
 
@@ -33,58 +31,76 @@ Mat rotateImage(const Mat &source, double angle, Size size){
   return dst;
 }
 
-ImageFeatures findIntersectionFeatures(ImageWithGPS image1, vector<ImageWithGPS> otherimages, int img_idx) {
+class GPSFeaturesFinder: public FeaturesFinder {
+  public:
+    void operator ()(const Mat &image, ImageFeatures &features) {
+      vector<Point2f> gpsData;
+      vector<KeyPoint> all;
+      ImageWithGPS data;
 
-  ImageFeatures result;
-  vector<Point2f> gpsData;
-  vector<KeyPoint> all;
+      for (auto element : otherImages ){
+        if ( element.image == image ) {
+          data = element;
+          break;
+        }
+      }
 
-  for (unsigned int i = 0; i< otherimages.size(); i++){
-    if(&image1 == &otherimages[i]) continue;
-    gpc_polygon* intersection;
-    gpc_polygon_clip(&image1.gpsPolygon, &image2.gpsPolygon,intersection);
-      
-    float minLon = (float) (intersection.x + intersection.width / 3);
-    float maxLon = (float) (intersection.x + 2 * intersection.width / 3);
-    float maxLat = (float) (intersection.y - intersection.height / 3);
-    float minLat = (float) (intersection.y - 2 * intersection.height / 3);
-    vector<int> ul = image1.gpsToPixels(maxLon, minLat);
-    vector<int> ur = image1.gpsToPixels(maxLon, maxLat);
-    vector<int> bl = image1.gpsToPixels(minLon, minLat);
-    vector<int> br = image1.gpsToPixels(minLon, maxLat);
-    Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
-    Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
-    Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
-    Point2f brPoint = Point2f((float)br[0], (float)br[1]);
-    KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
-    KeyPoint urKeyPt = KeyPoint(urPoint, 1);
-    KeyPoint blKeyPt = KeyPoint(blPoint, 1);
-    KeyPoint brKeyPt = KeyPoint(brPoint, 1);
+      for (unsigned int i = 0; i< otherimages.size(); i++){
+        if(image == &otherimages[i]) continue;
 
-    all.push_back(ulKeyPt);
-    all.push_back(urKeyPt);
-    all.push_back(blKeyPt);
-    all.push_back(brKeyPt);
-    //ImageFeatures imageFeature1; imageFeature1.img_idx = img_idx1;
-    //ImageFeatures imageFeature2; imageFeature2.img_idx = img_idx2;
-    //imageFeature1.img_size = image1.image.size();
-    //imageFeature2.img_size = image2.image.size();
-    gpsData.push_back(Point2f (maxLon,minLat));
-    gpsData.push_back(Point2f (maxLon,maxLat));
-    gpsData.push_back(Point2f (minLon, minLat));
-    gpsData.push_back(Point2f (minLon,maxLat));
-  }
+        auto ImageWithPlaneDat
 
-  Mat descriptors(all.size(),2,CV_32FC1);
-  for(unsigned int i =0; i < gpsData.size(); i++){
-    descriptors.push_back(gpsData[i].x);
-    descriptors.push_back(gpsData[i].y);
-  }
-  result.img_idx = img_idx;
-  result.img_size =  image1.image.size();
-  result.keypoints = all;
-  result.descriptors = descriptors;
-  return result;
+        gpc_polygon* intersection;
+        gpc_polygon_clip(&image.gpsPolygon, &otherimages[i].gpsPolygon,intersection);
+
+        float minLon = (float) (intersection.x + intersection.width / 3);
+        float maxLon = (float) (intersection.x + 2 * intersection.width / 3);
+        float maxLat = (float) (intersection.y - intersection.height / 3);
+        float minLat = (float) (intersection.y - 2 * intersection.height / 3);
+
+        vector<int> ul = data.gpsToPixels(maxLon, minLat);
+        vector<int> ur = data.gpsToPixels(maxLon, maxLat);
+        vector<int> bl = data.gpsToPixels(minLon, minLat);
+        vector<int> br = data.gpsToPixels(minLon, maxLat);
+
+        Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
+        Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
+        Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
+        Point2f brPoint = Point2f((float)br[0], (float)br[1]);
+
+        KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
+        KeyPoint urKeyPt = KeyPoint(urPoint, 1);
+        KeyPoint blKeyPt = KeyPoint(blPoint, 1);
+        KeyPoint brKeyPt = KeyPoint(brPoint, 1);
+
+        all.push_back(ulKeyPt);
+        all.push_back(urKeyPt);
+        all.push_back(blKeyPt);
+        all.push_back(brKeyPt);
+
+        //ImageFeatures imageFeature1; imageFeature1.img_idx = img_idx1;
+        //ImageFeatures imageFeature2; imageFeature2.img_idx = img_idx2;
+        //imageFeature1.img_size = image1.image.size();
+        //imageFeature2.img_size = image2.image.size();
+
+        gpsData.push_back(Point2f (maxLon,minLat));
+        gpsData.push_back(Point2f (maxLon,maxLat));
+        gpsData.push_back(Point2f (minLon, minLat));
+        gpsData.push_back(Point2f (minLon,maxLat));
+      }
+
+      Mat descriptors(all.size(),2,CV_32FC1);
+
+      for(unsigned int i =0; i < gpsData.size(); i++){
+        descriptors.push_back(gpsData[i].x);
+        descriptors.push_back(gpsData[i].y);
+      }
+
+      features.img_idx = img_idx;
+      features.img_size =  image1.image.size();
+      features.keypoints = all;
+      features.descriptors = descriptors;
+    }
 }
 
 double distance(double x1, double y1, double x2, double y2){
@@ -165,6 +181,7 @@ ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS>
     newVec[i] = newImages[i].image;
   }
   Stitcher stitcher = Stitcher::createDefault(true);
+
   newVec.push_back(accumulatedImage.image);
   stitcher.stitch(newVec, result);
   return ImageWithGPS(result,rect);
