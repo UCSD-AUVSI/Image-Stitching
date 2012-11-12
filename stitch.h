@@ -6,6 +6,7 @@
 #include <vector>
 #include "opencv2/stitching/stitcher.hpp"
 #include "opencv2/stitching/detail/matchers.hpp"
+#include "gpc.h"
 
 using namespace std;
 using namespace cv;
@@ -14,13 +15,25 @@ using namespace cv::detail;
 class ImageWithGPS{
   public:
     Mat image;
-    vector<vector<double> > corners;
+    gpc_polygon gpsPolygon;
     ImageWithGPS();
-    ImageWithGPS(Mat image, vector<vector<double> > corners);
+    ImageWithGPS(Mat image, gpc_polygon gpsPolygon);
     vector<int> gpsToPixels(double lat, double lon );
+	
   private:
     double scale;
+	double ang;
+
+    
 };
+vector<double> getExtremes(gpc_vertex* vertices);
+double findScale(Mat img, gpc_polygon gpsPoly);
+
+/*class GPSFeaturesFinder{
+public:
+	void operator ()(const Mat &image, ImageFeatures &features);
+};*/
+
 Mat rotateImage(const Mat &source, double angle, Size size);
 ImageFeatures findIntersectionFeatures(ImageWithGPS image1, 
     vector<ImageWithGPS> otherimages, int img_idx);

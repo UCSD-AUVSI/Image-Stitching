@@ -16,12 +16,20 @@ using namespace cv;
 using namespace cv::detail;
 
 ImageWithGPS::ImageWithGPS(){}
-ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){}
 
-vector<int> ImageWithGPS::gpsToPixels(double lat, double lon){
-  vector<int> result;   
-  int x = scale * ((lon * cos(angle)) - (lat * sin(angle)));
-  int y = scale * ((lat * sin(angle)) - (lat * cos(angle)));
+ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
+
+double scale = findScale(image, gpsPolygon);
+double ang = angle(gpsPolygon.contour->vertex[0].x, gpsPolygon.contour->vertex[0].y,
+	                 gpsPolygon.contour->vertex[1].x, gpsPolygon.contour->vertex[1].y);
+
+}
+
+vector<int> ImageWithGPS::gpsToPixels(double lon, double lat){
+  vector<int> result;  
+  
+  int x =(int) (scale * ((lon * cos(ang)) - (lat * sin(ang))));
+  int y =(int) (scale * ((lat * sin(ang)) - (lat * cos(ang))));
   result.push_back(x);
   result.push_back(y);
   return result;
@@ -34,21 +42,6 @@ Mat rotateImage(const Mat &source, double angle, Size size){
   Mat dst;
   warpAffine(source, dst, rot_mat, source.size());
   return dst;
-}
-
-void findMaxOrMin (double *arr){
-   
-   int i, j;
-   double tmp;
-   for (i = 1; i < 4; i++) {
-     j = i;
-     while (j > 0 && arr[j - 1] > arr[j]) {
-     tmp = arr[j];
-     arr[j] = arr[j - 1];
-     arr[j - 1] = tmp;
-     j--;
-     }
-   }
 }
 
 vector<double> getExtremes (gpc_vertex* vertices){
@@ -72,23 +65,23 @@ vector<double> getExtremes (gpc_vertex* vertices){
 }
 
 
-double scale_y(ImageWithGPS img){
+double findScale(Mat img, gpc_polygon gpsPoly){
 	double scale;
-	double x1 = img.gpsPolygon.contour->vertex[0].x;
-	double y1 = img.gpsPolygon.contour->vertex[0].y; 
-	double x2 = img.gpsPolygon.contour->vertex[1].x;
-	double y2 = img.gpsPolygon.contour->vertex[1].y;
-	double x3 = img.gpsPolygon.contour->vertex[3].x;
-	double y3 = img.gpsPolygon.contour->vertex[3].y; 
+	double x1 = gpsPoly.contour->vertex[0].x;
+	double y1 = gpsPoly.contour->vertex[0].y; 
+	double x2 = gpsPoly.contour->vertex[1].x;
+	double y2 = gpsPoly.contour->vertex[1].y;
+	double x3 = gpsPoly.contour->vertex[3].x;
+	double y3 = gpsPoly.contour->vertex[3].y; 
 	
 	double distance_1 = distance(x1,y1,x2,y2);
 	double distance_2 = distance(x1,y1,x3,y3);
 	double x; double y;
-	if(distance_1 >= distance_2){ distance_1 = x; distance_2 = y;} 
-	else {distance_1 = y; distance_2 = x;}
+	if(distance_1 >= distance_2){ x = distance_1 ; y = distance_2 ;} 
+	else {y = distance_1 ; x = distance_2 ;}
 
-	double img_x = img.image.cols;
-	double img_y = img.image.rows;
+	double img_x = img.cols;
+	double img_y = img.rows;
     scale = img_y/y;
 	return scale;
 }
@@ -99,21 +92,23 @@ class GPSFeaturesFinder: public FeaturesFinder {
       vector<Point2f> gpsData;
       vector<KeyPoint> all;
       ImageWithGPS data;
+	  int img_idx;
 
-
-      for (auto element : otherImages ){
-        if ( element.image == image ) {
-          data = element;
+      
+	  for (int j =0; j < otherImages.size(); j++ ){
+		  if ( otherImages.at(j).image.data == image.data) { // ?????????
+          data = otherImages.at(j);
+		  img_idx = j;
           break;
         }
       }
 
-      for (unsigned int i = 0; i< otherimages.size(); i++){
-        if(image == &otherimages[i]) continue;
+      for (unsigned int i = 0; i< otherImages.size(); i++){
+		  if(image.data == otherImages.at(i).image.data) continue;
 
         gpc_polygon* intersection;
-        gpc_polygon_clip(&image.gpsPolygon, &otherimages[i].gpsPolygon,intersection);
-		vector<double> coord = getExtremes(polygon.contour->vertex);
+		gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
+		vector<double> coord = getExtremes(data.gpsPolygon.contour->vertex);
 
        float maxLon = (float) coord.back(); coord.pop_back();
 	   float maxLat = (float) coord.back(); coord.pop_back();
@@ -153,12 +148,14 @@ class GPSFeaturesFinder: public FeaturesFinder {
         descriptors.push_back(gpsData[i].x);
         descriptors.push_back(gpsData[i].y);
       }
-
+	  
       features.img_idx = img_idx;
-      features.img_size =  image1.image.size();
+      features.img_size =  image.size();
       features.keypoints = all;
       features.descriptors = descriptors;
     }
+private:
+	vector<ImageWithGPS> otherImages;
 };
 
 
@@ -170,7 +167,7 @@ double angle(double x1, double y1, double x2, double y2){
   double dx = x2-x1;
   return tan(dy/dx);
 }
-
+// for simple testing, not include gpspolygon
 vector<ImageWithGPS> getTestDataForImage(Mat image,
     int rows,
     int columns,
@@ -218,17 +215,19 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
       vector<double> br; br.push_back((imageY+imageHeight)*scale); br.push_back(imageX+imageWidth*scale);
       vector<double> bl; bl.push_back((imageY+imageHeight)*scale); bl.push_back(imageX*scale);
       vector<vector<double> > coords; coords.push_back(ul); coords.push_back(ur);coords.push_back(br); coords.push_back(bl); 
-      resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
+      //resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
     }
   }
   return resultImages;
 }
-
+// 
 ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS> newImages) {
   Mat result;
-  Rect_<double> rect = accumulatedImage.rect;
+  //Rect_<double> rect = accumulatedImage.rect;
+  gpc_polygon poly = accumulatedImage.gpsPolygon;
+
   vector<Mat> newVec(newImages.size()+1);
-  for(unsigned int i =0; i < newImages.size(); i++){
+  /*for(unsigned int i =0; i < newImages.size(); i++){
     if(newImages[i].rect.x < rect.x)
       rect.x = newImages[i].rect.x;
     if(newImages[i].rect.y < rect.y)
@@ -238,12 +237,12 @@ ImageWithGPS iterativeStitch(ImageWithGPS accumulatedImage, vector<ImageWithGPS>
     if(newImages[i].rect.width+newImages[i].rect.x > rect.x+rect.width)
       rect.width = newImages[i].rect.width+newImages[i].rect.x-rect.x;
     newVec[i] = newImages[i].image;
-  }
+  }*/
   Stitcher stitcher = Stitcher::createDefault(true);
 
   newVec.push_back(accumulatedImage.image);
   stitcher.stitch(newVec, result);
-  return ImageWithGPS(result,rect);
+  return ImageWithGPS(result,poly);
 }
 
 int main(){
