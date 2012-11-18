@@ -19,7 +19,8 @@ using namespace cv::detail;
 
 ImageWithGPS::ImageWithGPS(){}
 
-ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
+ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon): image(image), gpsPolygon(gpsPolygon) {
+  
   scale = findScale(image, gpsPolygon);
   ang = findAngleGPS(gpsPolygon.contour->vertex[0].x,
               gpsPolygon.contour->vertex[0].y,
@@ -229,7 +230,7 @@ double distance(double x1, double y1, double x2, double y2){
   return sqrt(pow(x2-x1,2)+pow(y2-y1,2));
 }
 
-double testDistance(){
+void testDistance(){
   cerr <<"Testing distance...";
   assert(nearly(distance(0,0,3,4),5));
   cerr<<"Complete\n";
@@ -302,7 +303,7 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
 	  coords.contour->vertex[2].y = (imageY+imageHeight)*scale;
 	  coords.contour->vertex[3].x = imageX*scale;
 	  coords.contour->vertex[3].y = (imageY+imageHeight)*scale;
-      resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
+      resultImages[rows * j + i] = ImageWithGPS(result,coords);	  
     }
   }
   return resultImages;
@@ -339,7 +340,7 @@ int main(){
   testDistance();
   testFindScale();
 
-  ImageWithGPS accumulator, pano;
+  Mat pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0].image);
   imwrite("b.jpg",images[1].image);
@@ -352,7 +353,8 @@ int main(){
   _images.push_back(images[3].image);
   Stitcher stitcher = stitcher.createDefault(true);
   stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
-  imwrite("result.jpg",pano.image);
+  stitcher.stitch(_images,pano);
+  imwrite("result.jpg",pano);
 
 }
 
