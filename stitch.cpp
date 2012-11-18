@@ -1,5 +1,7 @@
 
+#ifdef WINDOWS
 #include "StdAfx.h"
+#endif
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -88,6 +90,13 @@ double findScale(Mat img, gpc_polygon gpsPoly){
 
 class GPSFeaturesFinder: public FeaturesFinder {
   public:
+    vector<ImageWithGPS> images;
+    GPSFeaturesFinder(vector<ImageWithGPS> images){
+      this->otherImages = images;
+    }
+    void find(const Mat &image, ImageFeatures &features){
+      (*this)(image,features);
+    }
     void operator ()(const Mat &image, ImageFeatures &features) {
       vector<Point2f> gpsData;
       vector<KeyPoint> all;
@@ -253,9 +262,13 @@ int main(){
   imwrite("b.jpg",images[1].image);
   imwrite("c.jpg",images[2].image);
   imwrite("d.jpg",images[3].image);
-  accumulator = images[3];
-  images.pop_back();
-  pano = iterativeStitch(accumulator,images);
+  vector<Mat> _images;
+  _images.push_back(images[0].image);
+  _images.push_back(images[1].image);
+  _images.push_back(images[2].image);
+  _images.push_back(images[3].image);
+  Stitcher stitcher = stitcher.createDefault(true);
+  stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
   imwrite("result.jpg",pano.image);
 
 }
