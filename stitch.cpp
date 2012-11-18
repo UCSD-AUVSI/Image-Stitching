@@ -255,10 +255,12 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
     double verticalOverlap,
     double scale){
   vector<ImageWithGPS> resultImages = vector<ImageWithGPS>(rows * columns);
+
   int normalWidth = image.cols / columns;
   int normalHeight = image.rows / rows;
   int overlapWidth = (int)((double)(normalWidth) * horizontalOverlap);
   int overlapHeight = (int)((double)(normalHeight) * verticalOverlap); 
+
   cout << "Original Width: " << image.cols << "\n";
   cout << "Original Height: " << image.rows << "\n";
   cout << "Normal Width: " << normalWidth <<"\n";
@@ -289,13 +291,18 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
       cout <<"Height: "<<imageHeight<<"\n";
       cout <<endl;
       Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
-
-      vector<double> ul; ul.push_back(imageY*scale); ul.push_back(imageX*scale);
-      vector<double> ur; ur.push_back(imageY*scale); ur.push_back((imageX+imageWidth)*scale);
-      vector<double> br; br.push_back((imageY+imageHeight)*scale); br.push_back(imageX+imageWidth*scale);
-      vector<double> bl; bl.push_back((imageY+imageHeight)*scale); bl.push_back(imageX*scale);
-      vector<vector<double> > coords; coords.push_back(ul); coords.push_back(ur);coords.push_back(br); coords.push_back(bl); 
-      //resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
+      gpc_polygon coords; 
+      coords.contour = new gpc_vertex_list(); 
+	  coords.contour->vertex = (gpc_vertex*)malloc(sizeof(gpc_vertex)*4);  
+	  coords.contour->vertex[0].x = imageX*scale;
+	  coords.contour->vertex[0].y = imageY*scale;
+	  coords.contour->vertex[1].x = (imageX+imageWidth)*scale;
+	  coords.contour->vertex[1].y = imageY*scale;
+	  coords.contour->vertex[2].x = imageX+imageWidth*scale;
+	  coords.contour->vertex[2].y = (imageY+imageHeight)*scale;
+	  coords.contour->vertex[3].x = imageX*scale;
+	  coords.contour->vertex[3].y = (imageY+imageHeight)*scale;
+      resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
     }
   }
   return resultImages;
