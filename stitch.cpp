@@ -72,13 +72,18 @@ vector<double> getExtremes (gpc_polygon polygon){
 
 void testGetExtremes(){
   cerr << "Testing getExtremes...";
-  gpc_vertex bottomLeft{32,-117};
-  gpc_vertex bottomRight{32,-116};
-  gpc_vertex topRight{33,-116};
-  gpc_vertex topLeft{33,-117};
+  gpc_vertex bottomLeft; bottomLeft.x = 32; bottomLeft.y = -116;
+  gpc_vertex bottomRight; bottomRight.x = 32;bottomRight.y = -116;
+  gpc_vertex topRight; topRight.x = 33; topRight.y = -116;
+  gpc_vertex topLeft; topLeft.x = 33; topLeft.y = -117;
   gpc_vertex vertices[] = {topLeft,topRight,bottomRight,bottomLeft};
-  gpc_vertex_list* list = new gpc_vertex_list{4,vertices};
-  gpc_polygon polygon{1,0,list};
+  gpc_vertex_list* list = new gpc_vertex_list();
+  list->num_vertices = 4;
+  list->vertex = vertices;
+  gpc_polygon polygon;
+  polygon.num_contours = 1;
+  polygon.hole=0;
+  polygon.contour=list;
   vector<double> extremes = getExtremes(polygon);
   assert(extremes[0] == 32); // Min Lat
   assert(extremes[1] == -117); // Min Lon
