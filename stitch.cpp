@@ -27,8 +27,12 @@ ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
               gpsPolygon.contour->vertex[1].y);
 }
 
-bool near(double a, double b, double epsilon = 0.001){
-  return fabs(a-b) < epsilon;
+bool nearly(double a, double b, double epsilon = 0.001){
+  if (fabs(a-b) > epsilon){
+    cerr << a << " != " << b << endl; 
+    return false;
+  }
+  return true;
 }
 
 vector<int> ImageWithGPS::gpsToPixels(double lon, double lat){
@@ -95,28 +99,46 @@ void testGetExtremes(){
 
 
 double findScale(Mat img, gpc_polygon gpsPoly){
-	double scale;
-	double x1 = gpsPoly.contour->vertex[0].x;
-	double y1 = gpsPoly.contour->vertex[0].y; 
-	double x2 = gpsPoly.contour->vertex[1].x;
-	double y2 = gpsPoly.contour->vertex[1].y;
-	double x3 = gpsPoly.contour->vertex[3].x;
-	double y3 = gpsPoly.contour->vertex[3].y; 
-	
-	double distance_1 = distance(x1,y1,x2,y2);
-	double distance_2 = distance(x1,y1,x3,y3);
-	double x; double y;
-	if(distance_1 >= distance_2){ x = distance_1 ; y = distance_2 ;} 
-	else {y = distance_1 ; x = distance_2 ;}
 
-	double img_x = img.cols;
-	double img_y = img.rows;
-    scale = img_y/y;
-	return scale;
+	double lat1 = gpsPoly.contour->vertex[0].x;
+	double lon1 = gpsPoly.contour->vertex[0].y; 
+	double lat2 = gpsPoly.contour->vertex[1].x;
+	double lon2 = gpsPoly.contour->vertex[1].y;
+	double lat3 = gpsPoly.contour->vertex[3].x;
+	double lon3 = gpsPoly.contour->vertex[3].y; 
+	
+	double distance_12 = distance(lat1,lon1,lat2,lon2);
+	double distance_13 = distance(lat1,lon1,lat3,lon3);
+    double largeSideGPS = max (distance_12, distance_13);
+    double smallSideGPS = min (distance_12, distance_13);
+    double largeSidePixels = max(img.rows,img.cols);
+    double smallSidePixels= min(img.rows,img.cols);
+
+    double largeScale = largeSideGPS / largeSidePixels;
+    double smallScale = largeSideGPS / largeSidePixels;
+
+    return (largeScale + smallScale) / 2.0;
+
 }
 
 double testFindScale(){
   cout <<"Testing findScale...";
+  Mat image = imread("image.jpg");
+  double maxLat = (double)image.cols / 1000.0;
+  double maxLon = (double)image.rows / 1000.0;
+  gpc_vertex bottomLeft; bottomLeft.x = 0; bottomLeft.y = 0;
+  gpc_vertex bottomRight; bottomRight.x = 0; bottomRight.y = maxLon;
+  gpc_vertex topRight; topRight.x = maxLon; topRight.y = maxLat;
+  gpc_vertex topLeft; topLeft.x = maxLon; topLeft.y = 0;
+  gpc_vertex vertices[] = {topLeft,topRight,bottomRight,bottomLeft};
+  gpc_vertex_list* list = new gpc_vertex_list();
+  list->num_vertices = 4;
+  list->vertex = vertices;
+  gpc_polygon polygon;
+  polygon.num_contours = 1;
+  polygon.hole=0;
+  polygon.contour=list;
+  assert(nearly(findScale(image,polygon),0.001,0.0000001));
   cout <<"Complete\n";
 }
 
@@ -209,7 +231,7 @@ double distance(double x1, double y1, double x2, double y2){
 
 double testDistance(){
   cerr <<"Testing distance...";
-  assert(near(distance(0,0,3,4),5));
+  assert(nearly(distance(0,0,3,4),5));
   cerr<<"Complete\n";
 }
 
@@ -221,8 +243,8 @@ double findAngleGPS(double lat1, double lon1, double lat2, double lon2){
 
 void testFindAngleGPS(){
   cerr <<"Testing findAngle...";
-  assert(near(findAngleGPS(0,0,5,5),45.0));
-  assert(near(findAngleGPS(0,0,3,10),16.699));
+  assert(nearly(findAngleGPS(0,0,5,5),45.0));
+  assert(nearly(findAngleGPS(0,0,3,10),16.699));
   cerr <<"Complete\n";
 }
 // for simple testing, not include gpspolygon
@@ -308,6 +330,7 @@ int main(){
   testGetExtremes();
   testFindAngleGPS();
   testDistance();
+  testFindScale();
 
   ImageWithGPS accumulator, pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
