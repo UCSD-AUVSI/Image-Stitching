@@ -1,6 +1,4 @@
-#ifdef WINDOWS
-#include "StdAfx.h"
-#endif
+
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -9,6 +7,7 @@
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "stitch.h"
 #include "gpc.h"
+#include "gpc.c"
 #include "math.h"
 
 #define PI 3.14159
@@ -19,7 +18,8 @@ using namespace cv::detail;
 
 ImageWithGPS::ImageWithGPS(){}
 
-ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
+ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon): image(image), gpsPolygon(gpsPolygon) {
+  
   scale = findScale(image, gpsPolygon);
   ang = findAngleGPS(gpsPolygon.contour->vertex[0].x,
               gpsPolygon.contour->vertex[0].y,
@@ -28,7 +28,11 @@ ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
 }
 
 bool nearly(double a, double b, double epsilon = 0.001){
-  return fabs(a-b) < epsilon;
+  if (fabs(a-b) > epsilon){
+    cerr << a << " != " << b << endl; 
+    return false;
+  }
+  return true;
 }
 
 vector<int> ImageWithGPS::gpsToPixels(double lon, double lat){
@@ -95,35 +99,55 @@ void testGetExtremes(){
 
 
 double findScale(Mat img, gpc_polygon gpsPoly){
-	double scale;
-	double x1 = gpsPoly.contour->vertex[0].x;
-	double y1 = gpsPoly.contour->vertex[0].y; 
-	double x2 = gpsPoly.contour->vertex[1].x;
-	double y2 = gpsPoly.contour->vertex[1].y;
-	double x3 = gpsPoly.contour->vertex[3].x;
-	double y3 = gpsPoly.contour->vertex[3].y; 
-	
-	double distance_1 = distance(x1,y1,x2,y2);
-	double distance_2 = distance(x1,y1,x3,y3);
-	double x; double y;
-	if(distance_1 >= distance_2){ x = distance_1 ; y = distance_2 ;} 
-	else {y = distance_1 ; x = distance_2 ;}
 
-	double img_x = img.cols;
-	double img_y = img.rows;
-    scale = img_y/y;
-	return scale;
+	double lat1 = gpsPoly.contour->vertex[0].x;
+	double lon1 = gpsPoly.contour->vertex[0].y; 
+	double lat2 = gpsPoly.contour->vertex[1].x;
+	double lon2 = gpsPoly.contour->vertex[1].y;
+	double lat3 = gpsPoly.contour->vertex[3].x;
+	double lon3 = gpsPoly.contour->vertex[3].y; 
+	
+	double distance_12 = distance(lat1,lon1,lat2,lon2);
+	double distance_13 = distance(lat1,lon1,lat3,lon3);
+    double largeSideGPS = max (distance_12, distance_13);
+    double smallSideGPS = min (distance_12, distance_13);
+    double largeSidePixels = max(img.rows,img.cols);
+    double smallSidePixels= min(img.rows,img.cols);
+
+    double largeScale = largeSideGPS / largeSidePixels;
+    double smallScale = largeSideGPS / largeSidePixels;
+
+    return (largeScale + smallScale) / 2.0;
+
 }
 
-double testFindScale(){
+void testFindScale(){
   cout <<"Testing findScale...";
+  Mat image = imread("image.jpg");
+  double maxLat = (double)image.cols / 1000.0;
+  double maxLon = (double)image.rows / 1000.0;
+  gpc_vertex bottomLeft; bottomLeft.x = 0; bottomLeft.y = 0;
+  gpc_vertex bottomRight; bottomRight.x = 0; bottomRight.y = maxLon;
+  gpc_vertex topRight; topRight.x = maxLon; topRight.y = maxLat;
+  gpc_vertex topLeft; topLeft.x = maxLon; topLeft.y = 0;
+  gpc_vertex vertices[] = {topLeft,topRight,bottomRight,bottomLeft};
+  gpc_vertex_list* list = new gpc_vertex_list();
+  list->num_vertices = 4;
+  list->vertex = vertices;
+  gpc_polygon polygon;
+  polygon.num_contours = 1;
+  polygon.hole=0;
+  polygon.contour=list;
+  assert(nearly(findScale(image,polygon),0.001,0.0000001));
   cout <<"Complete\n";
 }
 
 class GPSFeaturesFinder: public FeaturesFinder {
   public:
+	int img_idx; 
     vector<ImageWithGPS> images;
     GPSFeaturesFinder(vector<ImageWithGPS> images){
+	  img_idx = -1;
       this->otherImages = images;
     }
     void find(const Mat &image, ImageFeatures &features){
@@ -133,21 +157,14 @@ class GPSFeaturesFinder: public FeaturesFinder {
       vector<Point2f> gpsData;
       vector<KeyPoint> all;
       ImageWithGPS data;
-	  int img_idx;
-
-      
-	  for (int j =0; j < otherImages.size(); j++ ){
-		  if ( otherImages.at(j).image.data == image.data) { // ?????????
-          data = otherImages.at(j);
-		  img_idx = j;
-          break;
-        }
-      }
-
+	  img_idx++;
+      data = otherImages[img_idx];
+	  
+		 
       for (unsigned int i = 0; i< otherImages.size(); i++){
-		  if(image.data == otherImages.at(i).image.data) continue;
+		  if(data.image.data == otherImages.at(i).image.data) continue;
 
-        gpc_polygon* intersection;
+        gpc_polygon* intersection = new gpc_polygon();
 		gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
 		vector<double> coord = getExtremes(data.gpsPolygon);
 
@@ -183,10 +200,13 @@ class GPSFeaturesFinder: public FeaturesFinder {
       }
 
       Mat descriptors(all.size(),2,CV_32FC1);
-
+	
       for(unsigned int i =0; i < gpsData.size(); i++){
-        descriptors.push_back(gpsData[i].x);
-        descriptors.push_back(gpsData[i].y);
+		float* Mi = descriptors.ptr<float>(i);
+		Mi[0] = gpsData[i].x;
+		Mi[1] = gpsData[i].y;
+        //descriptors.push_back(gpsData[i].x);
+        //descriptors.push_back(gpsData[i].y);
       }
 	  
       features.img_idx = img_idx;
@@ -207,9 +227,9 @@ double distance(double x1, double y1, double x2, double y2){
   return sqrt(pow(x2-x1,2)+pow(y2-y1,2));
 }
 
-double testDistance(){
+void testDistance(){
   cerr <<"Testing distance...";
-  assert(near(distance(0,0,3,4),5));
+  assert(nearly(distance(0,0,3,4),5));
   cerr<<"Complete\n";
 }
 
@@ -221,8 +241,8 @@ double findAngleGPS(double lat1, double lon1, double lat2, double lon2){
 
 void testFindAngleGPS(){
   cerr <<"Testing findAngle...";
-  assert(near(findAngleGPS(0,0,5,5),45.0));
-  assert(near(findAngleGPS(0,0,3,10),16.699));
+  assert(nearly(findAngleGPS(0,0,5,5),45.0));
+  assert(nearly(findAngleGPS(0,0,3,10),16.699));
   cerr <<"Complete\n";
 }
 // for simple testing, not include gpspolygon
@@ -233,10 +253,12 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
     double verticalOverlap,
     double scale){
   vector<ImageWithGPS> resultImages = vector<ImageWithGPS>(rows * columns);
+
   int normalWidth = image.cols / columns;
   int normalHeight = image.rows / rows;
   int overlapWidth = (int)((double)(normalWidth) * horizontalOverlap);
   int overlapHeight = (int)((double)(normalHeight) * verticalOverlap); 
+
   cout << "Original Width: " << image.cols << "\n";
   cout << "Original Height: " << image.rows << "\n";
   cout << "Normal Width: " << normalWidth <<"\n";
@@ -267,13 +289,20 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
       cout <<"Height: "<<imageHeight<<"\n";
       cout <<endl;
       Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
-
-      vector<double> ul; ul.push_back(imageY*scale); ul.push_back(imageX*scale);
-      vector<double> ur; ur.push_back(imageY*scale); ur.push_back((imageX+imageWidth)*scale);
-      vector<double> br; br.push_back((imageY+imageHeight)*scale); br.push_back(imageX+imageWidth*scale);
-      vector<double> bl; bl.push_back((imageY+imageHeight)*scale); bl.push_back(imageX*scale);
-      vector<vector<double> > coords; coords.push_back(ul); coords.push_back(ur);coords.push_back(br); coords.push_back(bl); 
-      //resultImages[rows *j +i] = ImageWithGPS(result,coords);	  
+      gpc_polygon coords;
+	  coords.num_contours = 1;
+	  coords.hole = 0;
+      coords.contour = new gpc_vertex_list(); 
+	  coords.contour->vertex = (gpc_vertex*)malloc(sizeof(gpc_vertex)*4);  
+	  coords.contour->vertex[0].x = imageX*scale;
+	  coords.contour->vertex[0].y = imageY*scale;
+	  coords.contour->vertex[1].x = (imageX+imageWidth)*scale;
+	  coords.contour->vertex[1].y = imageY*scale;
+	  coords.contour->vertex[2].x = imageX+imageWidth*scale;
+	  coords.contour->vertex[2].y = (imageY+imageHeight)*scale;
+	  coords.contour->vertex[3].x = imageX*scale;
+	  coords.contour->vertex[3].y = (imageY+imageHeight)*scale;
+      resultImages[rows * j + i] = ImageWithGPS(result,coords);	  
     }
   }
   return resultImages;
@@ -308,8 +337,9 @@ int main(){
   testGetExtremes();
   testFindAngleGPS();
   testDistance();
+  testFindScale();
 
-  ImageWithGPS accumulator, pano;
+  Mat pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0].image);
   imwrite("b.jpg",images[1].image);
@@ -322,8 +352,8 @@ int main(){
   _images.push_back(images[3].image);
   Stitcher stitcher = stitcher.createDefault(true);
   stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
-  imwrite("result.jpg",pano.image);
+  stitcher.stitch(_images,pano);
+  imwrite("result.jpg",pano);
 
 }
-
 
