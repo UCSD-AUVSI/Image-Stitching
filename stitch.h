@@ -23,8 +23,6 @@ class ImageWithGPS{
   private:
     double scale;
 	double ang;
-
-    
 };
 vector<double> getExtremes(gpc_vertex* vertices);
 double findScale(Mat img, gpc_polygon gpsPoly);
@@ -40,7 +38,7 @@ ImageFeatures findIntersectionFeatures(ImageWithGPS image1,
 
 
 double distance(double x1, double y1, double x2, double y2);
-double angle(double x1, double y1, double x2, double y2);
+double findAngleGPS(double lat1, double lon1, double lat2, double lon2);
 vector<ImageWithGPS> getTestDataForImage(Mat image,
     int rows,
     int columns,
