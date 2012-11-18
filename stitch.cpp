@@ -27,7 +27,7 @@ ImageWithGPS::ImageWithGPS(Mat image, gpc_polygon gpsPolygon){
               gpsPolygon.contour->vertex[1].y);
 }
 
-bool near(double a, double b, double epsilon = 0.001){
+bool nearly(double a, double b, double epsilon = 0.001){
   return fabs(a-b) < epsilon;
 }
 
