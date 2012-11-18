@@ -1,6 +1,5 @@
-#ifdef WINDOWS
+
 #include "StdAfx.h"
-#endif
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -9,6 +8,7 @@
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "stitch.h"
 #include "gpc.h"
+#include "gpc.c"
 #include "math.h"
 
 #define PI 3.14159
@@ -122,7 +122,7 @@ double findScale(Mat img, gpc_polygon gpsPoly){
 
 }
 
-double testFindScale(){
+void testFindScale(){
   cout <<"Testing findScale...";
   Mat image = imread("image.jpg");
   double maxLat = (double)image.cols / 1000.0;
@@ -145,8 +145,10 @@ double testFindScale(){
 
 class GPSFeaturesFinder: public FeaturesFinder {
   public:
+	int img_idx; 
     vector<ImageWithGPS> images;
     GPSFeaturesFinder(vector<ImageWithGPS> images){
+	  img_idx = -1;
       this->otherImages = images;
     }
     void find(const Mat &image, ImageFeatures &features){
@@ -156,21 +158,14 @@ class GPSFeaturesFinder: public FeaturesFinder {
       vector<Point2f> gpsData;
       vector<KeyPoint> all;
       ImageWithGPS data;
-	  int img_idx;
-
-      
-	  for (int j =0; j < otherImages.size(); j++ ){
-		  if ( otherImages.at(j).image.data == image.data) { // ?????????
-          data = otherImages.at(j);
-		  img_idx = j;
-          break;
-        }
-      }
-
+	  img_idx++;
+      data = otherImages[img_idx];
+	  
+		 
       for (unsigned int i = 0; i< otherImages.size(); i++){
-		  if(image.data == otherImages.at(i).image.data) continue;
+		  if(data.image.data == otherImages.at(i).image.data) continue;
 
-        gpc_polygon* intersection;
+        gpc_polygon* intersection = new gpc_polygon();
 		gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
 		vector<double> coord = getExtremes(data.gpsPolygon);
 
@@ -206,10 +201,13 @@ class GPSFeaturesFinder: public FeaturesFinder {
       }
 
       Mat descriptors(all.size(),2,CV_32FC1);
-
+	
       for(unsigned int i =0; i < gpsData.size(); i++){
-        descriptors.push_back(gpsData[i].x);
-        descriptors.push_back(gpsData[i].y);
+		float* Mi = descriptors.ptr<float>(i);
+		Mi[0] = gpsData[i].x;
+		Mi[1] = gpsData[i].y;
+        //descriptors.push_back(gpsData[i].x);
+        //descriptors.push_back(gpsData[i].y);
       }
 	  
       features.img_idx = img_idx;
@@ -292,7 +290,9 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
       cout <<"Height: "<<imageHeight<<"\n";
       cout <<endl;
       Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
-      gpc_polygon coords; 
+      gpc_polygon coords;
+	  coords.num_contours = 1;
+	  coords.hole = 0;
       coords.contour = new gpc_vertex_list(); 
 	  coords.contour->vertex = (gpc_vertex*)malloc(sizeof(gpc_vertex)*4);  
 	  coords.contour->vertex[0].x = imageX*scale;
