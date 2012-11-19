@@ -1,5 +1,4 @@
 
-//#include "StdAfx.h"
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
@@ -165,6 +164,7 @@ class GPSFeaturesFinder: public FeaturesFinder {
 	  cout<<"ImageWithGPS Cols: "<<data.image.cols<<"\n";
 	  cout<<"Image Rows: "<<image.rows<<"\n"; 
 	  cout<<"Image Cols: "<<image.cols<<"\n";
+
       for (unsigned int i = 0; i< otherImages.size(); i++){
 		  if(data.image.data == otherImages.at(i).image.data) continue;
 
@@ -203,7 +203,6 @@ class GPSFeaturesFinder: public FeaturesFinder {
         gpsData.push_back(Point2f (minLon, minLat));
         gpsData.push_back(Point2f (minLon,maxLat));
       }
-	 
 
       Mat descriptors(all.size(),2,CV_32FC1);
 	
@@ -214,9 +213,8 @@ class GPSFeaturesFinder: public FeaturesFinder {
         //descriptors.push_back(gpsData[i].x);
         //descriptors.push_back(gpsData[i].y);
 
-
-
       }
+
       features.img_idx = img_idx;
       features.img_size =  image.size();
       features.keypoints = all;
@@ -364,3 +362,6 @@ int main(){
   imwrite("result.jpg",pano);
   getchar();
 }
+
+}
+
