@@ -18,13 +18,17 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
     gpc_polygon* intersection = new gpc_polygon();
     gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
-    vector<double> coord = getExtremes(data.gpsPolygon);
-
-    float maxLon = (float) coord.back(); coord.pop_back();
-    float maxLat = (float) coord.back(); coord.pop_back();
-    float minLon = (float) coord.back(); coord.pop_back();
-    float minLat = (float) coord.back(); coord.pop_back();
-
+    GPSExtremes coord = getGPSExtremes(data.gpsPolygon);
+    /*
+       float maxLon = (float) coord.back(); coord.pop_back();
+       float maxLat = (float) coord.back(); coord.pop_back();
+       float minLon = (float) coord.back(); coord.pop_back();
+       float minLat = (float) coord.back(); coord.pop_back();
+     */
+    float maxLon = (float) coord.maxLon;
+    float maxLat = (float) coord.maxLat;
+    float minLon = (float) coord.minLon;
+    float minLat = (float) coord.minLat;
     vector<int> ul = data.gpsToPixels(maxLon, minLat);
     vector<int> ur = data.gpsToPixels(maxLon, maxLat);
     vector<int> bl = data.gpsToPixels(minLon, minLat);

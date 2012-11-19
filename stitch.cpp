@@ -37,13 +37,6 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
     double scale);
 
 /**
- * Takes an angle in degrees as input and returns the same angle in radians
- */
-double toRadians(double degrees){
-  return degrees / 180 * PI;
-}
-
-/**
  * Returns true if two values are within `epsilon` of each other
  */
 bool nearly(double a, double b, double epsilon){
@@ -65,24 +58,33 @@ Mat rotateImage(const Mat &source, double angle) {
   return dst;
 }
 
-vector<double> getExtremes (gpc_polygon polygon){
-  gpc_vertex* vertices = polygon.contour->vertex;
-  double minLat = INT_MAX;
-  double minLon = INT_MAX;
-  double maxLat = INT_MIN;
-  double maxLon = INT_MIN;
-  vector<double> result;
-  for(int i = 0; i < 4; i++){
-    if (vertices[i].y < minLon ) minLon = vertices[i].y;
-    if (vertices[i].y > maxLon ) maxLon = vertices[i].y;
-    if (vertices[i].x < minLat ) minLat = vertices[i].x;
-    if (vertices[i].x > maxLat ) maxLat = vertices[i].x;
-  }
-  result.push_back(minLat);
-  result.push_back(minLon);
-  result.push_back(maxLat);
-  result.push_back(maxLon);
-  return result;
+struct GPSExtremes{
+public:
+	double minLat;
+	double minLon;
+	double maxLat;
+	double maxLon;
+
+};
+
+GPSExtremes getGPSExtremes(gpc_polygon polygon){
+    gpc_vertex* vertices = polygon.contour->vertex;
+	GPSExtremes result;
+	double minLat = INT_MAX;
+	double minLon = INT_MAX;
+	double maxLat = INT_MIN;
+	double maxLon = INT_MIN;
+	for(int i = 0; i < 4; i++){
+		if (vertices[i].y < minLon ) minLon = vertices[i].y;
+		if (vertices[i].y > maxLon ) maxLon = vertices[i].y;
+		if (vertices[i].x < minLat ) minLat = vertices[i].x;
+	    if (vertices[i].x > maxLat ) maxLat = vertices[i].x;
+	}
+	result.minLat = minLat;
+	result.minLon = minLon;
+	result.maxLat = maxLat;
+	result.maxLon = maxLon;
+	return result;
 }
 
 void testGetExtremes(){
@@ -99,11 +101,11 @@ void testGetExtremes(){
   polygon.num_contours = 1;
   polygon.hole=0;
   polygon.contour=list;
-  vector<double> extremes = getExtremes(polygon);
-  assert(extremes[0] == 32); // Min Lat
-  assert(extremes[1] == -117); // Min Lon
-  assert(extremes[2] == 33); // Max Lat
-  assert(extremes[3] == -116); // Max Lon
+  GPSExtremes extremes = getGPSExtremes(polygon);
+  assert(extremes.minLat == 32); // Min Lat
+  assert(extremes.minLon == -117); // Min Lon
+  assert(extremes.maxLat== 33); // Max Lat
+  assert(extremes.maxLon == -116); // Max Lon
   cerr <<"Complete\n";
 }
 
@@ -128,7 +130,6 @@ void testFindScale(){
   assert(nearly(findScale(image,polygon),0.001,0.0000001));
   cout <<"Complete\n";
 }
-
 
 
 double toDegrees(double radians){
@@ -226,7 +227,7 @@ int main(){
   testGetExtremes();
   testFindAngleGPS();
   testDistance();
-  testFindScale();
+  //testFindScale();
 
   Mat pano;
   vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
@@ -241,6 +242,7 @@ int main(){
   _images.push_back(images[3].image);
   Stitcher stitcher = stitcher.createDefault(true);
   stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
+
   stitcher.stitch(_images,pano);
   imwrite("result.jpg",pano);
   getchar();
