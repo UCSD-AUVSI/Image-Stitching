@@ -64,27 +64,27 @@ public:
 	double minLon;
 	double maxLat;
 	double maxLon;
-
+	GPSExtremes(gpc_polygon polygon);
 };
 
-GPSExtremes getGPSExtremes(gpc_polygon polygon){
+GPSExtremes::GPSExtremes(gpc_polygon polygon){
     gpc_vertex* vertices = polygon.contour->vertex;
-	GPSExtremes result;
-	double minLat = INT_MAX;
-	double minLon = INT_MAX;
-	double maxLat = INT_MIN;
-	double maxLon = INT_MIN;
+	
+	double minLat_ = INT_MAX;
+	double minLon_ = INT_MAX;
+	double maxLat_ = INT_MIN;
+	double maxLon_ = INT_MIN;
 	for(int i = 0; i < 4; i++){
-		if (vertices[i].y < minLon ) minLon = vertices[i].y;
-		if (vertices[i].y > maxLon ) maxLon = vertices[i].y;
-		if (vertices[i].x < minLat ) minLat = vertices[i].x;
-	    if (vertices[i].x > maxLat ) maxLat = vertices[i].x;
+		if (vertices[i].y < minLon_ ) minLon_ = vertices[i].y;
+		if (vertices[i].y > maxLon_ ) maxLon_ = vertices[i].y;
+		if (vertices[i].x < minLat_ ) minLat_ = vertices[i].x;
+	    if (vertices[i].x > maxLat_ ) maxLat_ = vertices[i].x;
 	}
-	result.minLat = minLat;
-	result.minLon = minLon;
-	result.maxLat = maxLat;
-	result.maxLon = maxLon;
-	return result;
+	minLat = minLat_;
+	minLon = minLon_;
+	maxLat = maxLat_;
+	maxLon = maxLon_;
+	//return result;
 }
 /*
 vector<double> getExtremes (gpc_polygon polygon){
@@ -122,7 +122,7 @@ void testGetExtremes(){
   polygon.num_contours = 1;
   polygon.hole=0;
   polygon.contour=list;
-  GPSExtremes extremes = getGPSExtremes(polygon);
+  GPSExtremes extremes = GPSExtremes(polygon);
   assert(extremes.minLat == 32); // Min Lat
   assert(extremes.minLon == -117); // Min Lon
   assert(extremes.maxLat== 33); // Max Lat
@@ -204,7 +204,7 @@ class GPSFeaturesFinder: public FeaturesFinder {
 
         gpc_polygon* intersection = new gpc_polygon();
 		gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
-		GPSExtremes coord = getGPSExtremes(data.gpsPolygon);
+		GPSExtremes coord = GPSExtremes(data.gpsPolygon);
 		/*
        float maxLon = (float) coord.back(); coord.pop_back();
 	   float maxLat = (float) coord.back(); coord.pop_back();
