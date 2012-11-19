@@ -355,7 +355,7 @@ int main(){
   stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
   stitcher.stitch(_images,pano);
   imwrite("result.jpg",pano);
-
+  getchar();
 }
 
 
