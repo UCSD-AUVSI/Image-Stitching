@@ -2,8 +2,9 @@
 #define GPS_FEATURES_FINDER_H
 #include <cv.h>
 #include <vector>
-#include "opencv2/stitching/stitcher.hpp"
-#include "opencv2/stitching/detail/matchers.hpp"
+#include <opencv2/stitching/stitcher.hpp>
+#include <opencv2/stitching/detail/matchers.hpp>
+#include "DataTypes.h"
 
 using namespace cv;
 using namespace cv::detail;

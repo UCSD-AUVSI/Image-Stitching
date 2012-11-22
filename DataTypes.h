@@ -28,7 +28,7 @@ struct LatLon {
   /**
    * Converts this GPS point to an openCV point2i for use as a descriptor
    */
-  cv::Point2i toPoint2i(){
+  cv::Point2i toPoint2i();
 };
 
 struct ImageWithPlaneData {
@@ -60,7 +60,6 @@ struct ImageWithPlaneData {
    * Returns the pixel in the image that is closest to the given point
    */
   Pixel getPixelFor(LatLon latlon);
-  }
 };
 
 struct GPSExtremes {
