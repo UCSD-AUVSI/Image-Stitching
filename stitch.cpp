@@ -44,7 +44,7 @@ void testGetExtremes(){
   polygon.num_contours = 1;
   polygon.hole=0;
   polygon.contour=list;
-  GPSExtremes extremes = GPSExtremes(polygon);
+  GPSExtremes extremes = GPSExtremes(&polygon);
   assert(extremes.minLat == 32);    // Min Lat
   assert(extremes.minLon == -117);  // Min Lon
   assert(extremes.maxLat== 33);     // Max Lat
@@ -124,8 +124,8 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
         0.0, // pitch
         0.0, // yaw
         0.0, // gimbalRoll
-        0.0, // gimbalYaw
-      );
+        0.0  // gimbalYaw
+      ); 
     }
   }
   return resultImages;
@@ -136,20 +136,31 @@ int main(){
   testGetExtremes();
 
   Mat pano;
-  vector<ImageWithPlaneData> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
-  imwrite("a.jpg",images[0].image);
-  imwrite("b.jpg",images[1].image);
-  imwrite("c.jpg",images[2].image);
-  imwrite("d.jpg",images[3].image);
-  vector<Mat> _images;
-  _images.push_back(images[0].image);
-  _images.push_back(images[1].image);
-  _images.push_back(images[2].image);
-  _images.push_back(images[3].image);
-  Stitcher stitcher = stitcher.createDefault(true);
-  stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(images)));
+  
+  vector<ImageWithPlaneData> imagesWithData = getTestDataForImage(
+    imread("image.jpg"),      // image
+    2,                        // rows
+    2,                        // columns
+    0.2,                      // horizontal overlap,
+    1.0,                      // pixels per meter
+    32.0,                     // minimum latitude
+    -117.0);                  // minimum longitude
 
-  stitcher.stitch(_images,pano);
+  imwrite("a.jpg",imagesWithData[0].image);
+  imwrite("b.jpg",imagesWithData[1].image);
+  imwrite("c.jpg",imagesWithData[2].image);
+  imwrite("d.jpg",imagesWithData[3].image);
+
+  vector<Mat> images;
+  images.push_back(imagesWithData[0].image);
+  images.push_back(imagesWithData[1].image);
+  images.push_back(imagesWithData[2].image);
+  images.push_back(imagesWithData[3].image);
+
+  Stitcher stitcher = stitcher.createDefault(true);
+  stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(imagesWithData)));
+
+  stitcher.stitch(images,pano);
   imwrite("result.jpg",pano);
   getchar();
 }

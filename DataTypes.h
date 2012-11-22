@@ -12,6 +12,7 @@ struct Pixel {
    * Converts this pixel to an OpenCV Point2f
    */
   cv::Point2f toPoint2f();
+  cv::KeyPoint toKeyPoint(double scale);
 };
 
 struct LatLon {
@@ -67,7 +68,7 @@ struct GPSExtremes {
   double minLon;
   double maxLat;
   double maxLon;
-  GPSExtremes(gpc_polygon polygon);
+  GPSExtremes(gpc_polygon* polygon);
   GPSExtremes(double minLat, double minLon, double maxLat, double maxLon):
                 minLat(minLat),
                 minLon(minLon),

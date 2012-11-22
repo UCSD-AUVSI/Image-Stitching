@@ -6,6 +6,7 @@ using namespace std;
 void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   
   vector<KeyPoint> keyPoints;
+  vector<Point2i> gpsData;
 
   /* Associate this image with the data */
   ImageWithPlaneData imageWithData = imagesWithData[imageIndex];
@@ -16,7 +17,7 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   cout<<"Image Cols: "<<image.cols<<"\n";
 
   /* Determine the scale of the image */
-  double scale = (double) imageWithData.image.rows / (double)image.rows;
+  double scale = (double) image.rows / (double)imageWithData.image.rows;
   cout << "Scale: " << scale << endl;
 
   for (unsigned int i = 0; i< imagesWithData.size(); i++){
@@ -67,11 +68,6 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     keyPoints.push_back(keyPoint3);
     keyPoints.push_back(keyPoint4);
 
-    cout <<"KeyPoint1: "<<keyPoint1<<endl;
-    cout <<"KeyPoint2: "<<keyPoint2<<endl;
-    cout <<"KeyPoint3: "<<keyPoint3<<endl;
-    cout <<"KeyPoint4: "<<keyPoint4<<endl;
-
   }
 
   Mat descriptors(keyPoints.size(),2,CV_32FC1);
@@ -88,7 +84,7 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     cout <<Mi[0]<<" "<<Mi[1]<<endl;
   }
 
-  features.img_idx = img_idx;
+  features.img_idx = imageIndex;
   features.img_size =  image.size();
   features.keypoints = keyPoints;
   features.descriptors = descriptors;
