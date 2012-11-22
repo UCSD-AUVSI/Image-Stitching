@@ -64,27 +64,27 @@ public:
 	double minLon;
 	double maxLat;
 	double maxLon;
-
+	GPSExtremes(gpc_polygon polygon);
 };
 
-GPSExtremes getGPSExtremes(gpc_polygon polygon){
+GPSExtremes::GPSExtremes(gpc_polygon polygon){
     gpc_vertex* vertices = polygon.contour->vertex;
-	GPSExtremes result;
-	double minLat = INT_MAX;
-	double minLon = INT_MAX;
-	double maxLat = INT_MIN;
-	double maxLon = INT_MIN;
+	
+	double minLat_ = INT_MAX;
+	double minLon_ = INT_MAX;
+	double maxLat_ = INT_MIN;
+	double maxLon_ = INT_MIN;
 	for(int i = 0; i < 4; i++){
-		if (vertices[i].y < minLon ) minLon = vertices[i].y;
-		if (vertices[i].y > maxLon ) maxLon = vertices[i].y;
-		if (vertices[i].x < minLat ) minLat = vertices[i].x;
-	    if (vertices[i].x > maxLat ) maxLat = vertices[i].x;
+		if (vertices[i].y < minLon_ ) minLon_ = vertices[i].y;
+		if (vertices[i].y > maxLon_ ) maxLon_ = vertices[i].y;
+		if (vertices[i].x < minLat_ ) minLat_ = vertices[i].x;
+	    if (vertices[i].x > maxLat_ ) maxLat_ = vertices[i].x;
 	}
-	result.minLat = minLat;
-	result.minLon = minLon;
-	result.maxLat = maxLat;
-	result.maxLon = maxLon;
-	return result;
+	minLat = minLat_;
+	minLon = minLon_;
+	maxLat = maxLat_;
+	maxLon = maxLon_;
+	//return result;
 }
 
 void testGetExtremes(){
@@ -101,7 +101,7 @@ void testGetExtremes(){
   polygon.num_contours = 1;
   polygon.hole=0;
   polygon.contour=list;
-  GPSExtremes extremes = getGPSExtremes(polygon);
+  GPSExtremes extremes = GPSExtremes(polygon);
   assert(extremes.minLat == 32); // Min Lat
   assert(extremes.minLon == -117); // Min Lon
   assert(extremes.maxLat== 33); // Max Lat
@@ -130,6 +130,93 @@ void testFindScale(){
   assert(nearly(findScale(image,polygon),0.001,0.0000001));
   cout <<"Complete\n";
 }
+
+
+class GPSFeaturesFinder: public FeaturesFinder {
+  public:
+	int img_idx; 
+    vector<ImageWithGPS> images;
+    GPSFeaturesFinder(vector<ImageWithGPS> images){
+	  img_idx = -1;
+      this->otherImages = images;
+    }
+    void find(const Mat &image, ImageFeatures &features){
+      (*this)(image,features);
+    }
+    void operator ()(const Mat &image, ImageFeatures &features) {
+      vector<Point2f> gpsData;
+      vector<KeyPoint> all;
+      ImageWithGPS data;
+	  img_idx++;
+      data = otherImages[img_idx];
+	  
+	  cout<<"ImageWithGPS Rows: "<<data.image.rows<<"\n"; 
+	  cout<<"ImageWithGPS Cols: "<<data.image.cols<<"\n";
+	  cout<<"Image Rows: "<<image.rows<<"\n"; 
+	  cout<<"Image Cols: "<<image.cols<<"\n";
+
+      for (unsigned int i = 0; i< otherImages.size(); i++){
+		  if(data.image.data == otherImages.at(i).image.data) continue;
+
+        gpc_polygon* intersection = new gpc_polygon();
+		gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
+		GPSExtremes coord = GPSExtremes(data.gpsPolygon);
+		/*
+       float maxLon = (float) coord.back(); coord.pop_back();
+	   float maxLat = (float) coord.back(); coord.pop_back();
+	   float minLon = (float) coord.back(); coord.pop_back();
+	   float minLat = (float) coord.back(); coord.pop_back();
+	   */
+		float maxLon = (float) coord.maxLon;
+		float maxLat = (float) coord.maxLat;
+		float minLon = (float) coord.minLon;
+		float minLat = (float) coord.minLat;
+
+        vector<int> ul = data.gpsToPixels(maxLon, minLat);
+        vector<int> ur = data.gpsToPixels(maxLon, maxLat);
+        vector<int> bl = data.gpsToPixels(minLon, minLat);
+        vector<int> br = data.gpsToPixels(minLon, maxLat);
+
+        Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
+        Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
+        Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
+        Point2f brPoint = Point2f((float)br[0], (float)br[1]);
+
+        KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
+        KeyPoint urKeyPt = KeyPoint(urPoint, 1);
+        KeyPoint blKeyPt = KeyPoint(blPoint, 1);
+        KeyPoint brKeyPt = KeyPoint(brPoint, 1);
+
+        all.push_back(ulKeyPt);
+        all.push_back(urKeyPt);
+        all.push_back(blKeyPt);
+        all.push_back(brKeyPt);
+
+        gpsData.push_back(Point2f (maxLon,minLat));
+        gpsData.push_back(Point2f (maxLon,maxLat));
+        gpsData.push_back(Point2f (minLon, minLat));
+        gpsData.push_back(Point2f (minLon,maxLat));
+      }
+
+      Mat descriptors(all.size(),2,CV_32FC1);
+	
+      for(unsigned int i =0; i < gpsData.size(); i++){
+		int* Mi = descriptors.ptr<int>(i);
+		Mi[0] = gpsData[i].x;
+		Mi[1] = gpsData[i].y;
+        //descriptors.push_back(gpsData[i].x);
+        //descriptors.push_back(gpsData[i].y);
+
+      }
+
+      features.img_idx = img_idx;
+      features.img_size =  image.size();
+      features.keypoints = all;
+      features.descriptors = descriptors;
+    }
+private:
+	vector<ImageWithGPS> otherImages;
+};
 
 
 double toDegrees(double radians){
