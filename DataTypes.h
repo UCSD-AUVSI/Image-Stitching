@@ -25,4 +25,21 @@ struct LatLon {
   gpc_vertex toGPCVertex();
 };
 
+struct ImageWithPlaneData {
+  IplImage* image;
+  __int32 latitude;
+  __int32 longitude;
+  __int32 altitude;
+  double roll;
+  double pitch;
+  double yaw;
+  double gimbalRoll;
+  double gimbalPitch;
+  __int16 xVelocity;
+  __int16 yVelocity;
+  __int16 zVelocity;
+  gpc_polygon toGPCpolygon();
+};
+
+
 #endif

@@ -35,9 +35,9 @@ For each image passed in
   - Determine how much the image has been scaled down, store the ratio in variable `scale`
   - For each other image in the vector<ImageWithPlaneData>:
    - If this image and the other image intersect in physical space:
-     - Find the pixel locations of four points in the intersection area.
-     - Multiply each pixel position by `scale` to determine the pixel in the original image
-     - Perform GeoReferening on each pixel position to determine the GPS coordinates of each pixel
+     - Find the GPS locations of four points in the intersection area.
+     - Use Georeferencing to find the pixel coordinates of the GPS coordinates in the original image
+     - Divide each pixel position by `scale` to determine the pixel position in the low-res image
       - Multiply each GPS coordinate by 1000 and convert to an integer to determine the
       descriptor for each pixel.
       - Add the pixel locations in the low-resolution image to the keypoints, and use the modified
