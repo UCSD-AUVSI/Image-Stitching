@@ -9,8 +9,6 @@
 #include "GeoReference.h"
 
 #define GIMBAL_YAW		0.0
-#define X_PIXELS		720
-#define Y_PIXELS		486
 #define PI_TO_RAD M_PI / 180.0
 
 using namespace std;
@@ -224,8 +222,23 @@ cv::Mat GeoReference::EulerAngles_Plane(cv::Mat Orig_Vector, double Roll, double
 // GPS in degrees
 // plane and gimbal orientation in radians
 // target_x/y in pixels, where 0,0 is center
-bool GeoReference::forwardGeoreferencing(double plane_latitude, double plane_longitude, double plane_altitude, double plane_roll, double plane_pitch, double plane_heading, double gimbal_roll, double gimbal_pitch, double gimbal_yaw, 
-				double target_x, double target_y, double zoom, double & Target_Latitude, double & Target_Longitude, double & Target_Height)
+bool GeoReference::forwardGeoreferencing(double plane_latitude,
+                                         double plane_longitude,
+                                         double plane_altitude,
+                                         double plane_roll,
+                                         double plane_pitch,
+                                         double plane_heading, 
+                                         double gimbal_roll, 
+                                         double gimbal_pitch, 
+                                         double gimbal_yaw, 
+				                         double target_x,
+                                         double target_y,
+                                         double x_pixels,
+                                         double y_pixels,
+                                         double zoom,
+                                         double & Target_Latitude,
+                                         double & Target_Longitude, 
+                                         double & Target_Height)
 {
 	/////////////////////
 	// Funcs used by forwardGeoreferencing:
@@ -238,8 +251,6 @@ bool GeoReference::forwardGeoreferencing(double plane_latitude, double plane_lon
 
 	double x_fov = 46.0 * PI_TO_RAD;
 	double y_fov = 34.0 * PI_TO_RAD;
-	double x_pixels = X_PIXELS;
-	double y_pixels = Y_PIXELS;
 	double a = 6378137;
 	double b = 6356752.3142;
 	double ground_altitude = 0.0;

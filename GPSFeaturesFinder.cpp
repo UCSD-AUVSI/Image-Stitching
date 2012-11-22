@@ -4,6 +4,7 @@
 using namespace std;
 
 void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
+  imageIndex++;
   
   vector<KeyPoint> keyPoints;
   vector<Point2i> gpsData;
@@ -11,8 +12,14 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   /* Associate this image with the data */
   ImageWithPlaneData imageWithData = imagesWithData[imageIndex];
 
-  cout<<"ImageWithGPS Rows: "<<imageWithData.image.rows<<"\n"; 
-  cout<<"ImageWithGPS Cols: "<<imageWithData.image.cols<<"\n";
+  if (imageWithData.image.rows == 0 || imageWithData.image.cols == 0){
+    cout << "GPSFeatureFinder failed: imageWithData is empty\n";
+    cout << "Image index: "<< imageIndex << endl;
+    assert(false);
+  }
+
+  cout<<"ImageWithPlaneData Rows: "<<imageWithData.image.rows<<"\n"; 
+  cout<<"ImageWithPlaneData Cols: "<<imageWithData.image.cols<<"\n";
   cout<<"Image Rows: "<<image.rows<<"\n"; 
   cout<<"Image Cols: "<<image.cols<<"\n";
 
@@ -39,6 +46,11 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     double minLat = extremes.minLat;
     double dLat = maxLat - minLat;
     double dLon = maxLon - minLon;
+
+    cout <<"minLat: "<<minLat<<endl;
+    cout <<"maxLat: "<<maxLat<<endl;
+    cout <<"minLon: "<<minLon<<endl;
+    cout <<"maxLon: "<<maxLon<<endl;
 
     /* Find the GPS locations of the four points */
     LatLon point1(minLat + dLat / 3, minLon + dLon / 3);
@@ -68,6 +80,17 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     keyPoints.push_back(keyPoint3);
     keyPoints.push_back(keyPoint4);
 
+    cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
+    cout <<"LatLon1: ("<<point1.lat<<","<<point1.lon<<")\n";
+    cout <<"Pixel2: ("<<pixel2.x<<","<<pixel2.y<<")   ";
+    cout <<"LatLon2: ("<<point2.lat<<","<<point2.lon<<")\n";
+    cout <<"Pixel3: ("<<pixel3.x<<","<<pixel3.y<<")   ";
+    cout <<"LatLon3: ("<<point3.lat<<","<<point3.lon<<")\n";
+    cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
+    cout <<"LatLon4: ("<<point4.lat<<","<<point4.lon<<")\n";
+    cout <<"\n\n";
+
+
   }
 
   Mat descriptors(keyPoints.size(),2,CV_32FC1);
@@ -77,11 +100,6 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     int* Mi = descriptors.ptr<int>(i);
     Mi[0] = gpsData[i].x;
     Mi[1] = gpsData[i].y;
-  }
-
-  for(unsigned int i =0; i < gpsData.size(); i++){
-    int* Mi = descriptors.ptr<int>(i);
-    cout <<Mi[0]<<" "<<Mi[1]<<endl;
   }
 
   features.img_idx = imageIndex;

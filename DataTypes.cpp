@@ -2,6 +2,8 @@
 #include "DataTypes.h"
 #include "gpc.h"
 #include "GeoReference.h"
+#include <iostream>
+using namespace std;
 
 cv::Point2f Pixel::toPoint2f(){
   return cv::Point2f(x,y);
@@ -41,7 +43,7 @@ GPSExtremes::GPSExtremes(gpc_polygon* polygon){
 
 //TODO: GeoReferencing
 Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
-  return Pixel(0,0);
+  return Pixel((int)(rand() % 500),(int)(rand() % 500));
 }
 
 cv::KeyPoint Pixel::toKeyPoint(double scale){
@@ -49,7 +51,7 @@ cv::KeyPoint Pixel::toKeyPoint(double scale){
 }
 
 gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
-  double latitude,longitude,altitude; 
+  double vertexLatitude,vertexLongitude,vertexAltitude; 
 
   Vision::GeoReference::forwardGeoreferencing(latitude,
                                       longitude,
@@ -62,11 +64,13 @@ gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
                                       0, // gimbal yaw,
                                       0, // targetX
                                       0, // targetY
+                                      image.cols,
+                                      image.rows,
                                       1.0, // zoom,
-                                      latitude,
-                                      longitude,
-                                      altitude);
-  LatLon bottomLeftPoint = LatLon(latitude,longitude);
+                                      vertexLatitude,
+                                      vertexLongitude,
+                                      vertexAltitude);
+  LatLon bottomLeftPoint = LatLon(vertexLatitude,vertexLongitude);
 
   Vision::GeoReference::forwardGeoreferencing(latitude,
                                       longitude,
@@ -79,11 +83,13 @@ gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
                                       0, // gimbal yaw,
                                       image.cols-1, // targetX
                                       0, // targetY
+                                      image.cols,
+                                      image.rows,
                                       1.0, // zoom,
-                                      latitude,
-                                      longitude,
-                                      altitude);
-  LatLon bottomRightPoint = LatLon(latitude,longitude);
+                                      vertexLatitude,
+                                      vertexLongitude,
+                                      vertexAltitude);
+  LatLon bottomRightPoint = LatLon(vertexLatitude,vertexLongitude);
 
   Vision::GeoReference::forwardGeoreferencing(latitude,
                                       longitude,
@@ -96,11 +102,13 @@ gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
                                       0, // gimbal yaw,
                                       image.cols-1, // targetX
                                       image.rows-1, // targetY
+                                      image.cols,
+                                      image.rows,
                                       1.0, // zoom,
-                                      latitude,
-                                      longitude,
-                                      altitude);
-  LatLon topRightPoint = LatLon(latitude,longitude);
+                                      vertexLatitude,
+                                      vertexLongitude,
+                                      vertexAltitude);
+  LatLon topRightPoint = LatLon(vertexLatitude,vertexLongitude);
 
   Vision::GeoReference::forwardGeoreferencing(latitude,
                                       longitude,
@@ -113,11 +121,18 @@ gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
                                       0, // gimbal yaw,
                                       0, // targetX
                                       image.rows-1, // targetY
+                                      image.cols,
+                                      image.rows,
                                       1.0, // zoom,
-                                      latitude,
-                                      longitude,
-                                      altitude);
-  LatLon topLeftPoint = LatLon(latitude,longitude);
+                                      vertexLatitude,
+                                      vertexLongitude,
+                                      vertexAltitude);
+  LatLon topLeftPoint = LatLon(vertexLatitude,vertexLongitude);
+
+  cout <<"bottomLeftPoint: ("<<bottomLeftPoint.lat<<", "<<bottomLeftPoint.lon<<")\n";
+  cout <<"topLeftPoint: ("<<topLeftPoint.lat<<", "<<topLeftPoint.lon<<")\n";
+  cout <<"bottomRightPoint: ("<<bottomRightPoint.lat<<", "<<bottomRightPoint.lon<<")\n";
+  cout <<"topRightPoint: ("<<topRightPoint.lat<<", "<<topRightPoint.lon<<")\n";
 
   gpc_vertex topLeftVertex = topLeftPoint.toGPCVertex();
   gpc_vertex topRightVertex = topRightPoint.toGPCVertex();

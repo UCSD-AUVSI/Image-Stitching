@@ -120,6 +120,10 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
       cout <<endl;
 
       Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
+      if ( result.cols == 0 || result.rows == 0){
+        cout << "Test data failed, the image is empty\n"; 
+        assert(false);
+      }
       resultImages[rows * j + i] = ImageWithPlaneData(
         result,
         planeLat,

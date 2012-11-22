@@ -41,8 +41,24 @@ namespace Vision
 				double target_x, double target_y, double zoom, double & Target_Latitude, double & Target_Longitude, double & Target_Height);
 		static void reverseGeoreference(double plane_latitude, double plane_longitude, double plane_altitude, double plane_roll, double plane_pitch, double plane_heading, 
 				double Target_Latitude, double Target_Longitude, double Target_Height, double & gimbal_roll, double & gimbal_pitch);
-		static bool forwardGeoreferencing(double plane_latitude, double plane_longitude, double plane_altitude, double plane_roll, double plane_pitch, double plane_heading, double gimbal_roll, double gimbal_pitch, double gimbal_yaw, 
-				double target_x, double target_y, double zoom, double & Target_Latitude, double & Target_Longitude, double & Target_Height);
+
+		static bool forwardGeoreferencing(double plane_latitude,
+                                          double plane_longitude,
+                                          double plane_altitude,
+                                          double plane_roll,
+                                          double plane_pitch,
+                                          double plane_heading,
+                                          double gimbal_roll,
+                                          double gimbal_pitch,
+                                          double gimbal_yaw,
+				                          double target_x,
+                                          double target_y,
+                                          double x_pixels,
+                                          double y_pixels,
+                                          double zoom,
+                                          double & Target_Latitude,
+                                          double & Target_Longitude,
+                                          double & Target_Height);
 
 		
 	private:
