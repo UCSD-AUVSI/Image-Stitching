@@ -26,18 +26,15 @@ struct LatLon {
 };
 
 struct ImageWithPlaneData {
-  IplImage* image;
-  __int32 latitude;
-  __int32 longitude;
-  __int32 altitude;
+  cv::Mat image;
+  double latitude;
+  double longitude;
+  double altitude;
   double roll;
   double pitch;
   double yaw;
   double gimbalRoll;
   double gimbalPitch;
-  __int16 xVelocity;
-  __int16 yVelocity;
-  __int16 zVelocity;
   gpc_polygon toGPCpolygon();
 };
 
