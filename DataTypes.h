@@ -1,7 +1,8 @@
 #ifndef DATATYPES_H
 #define DATATYPES_H
 #include <cv.h>
-struct gpc_vertex;
+#include "gpc.h"
+
 struct Pixel {
   int x;
   int y;
@@ -22,6 +23,6 @@ struct LatLon {
    * Converts this GPS point to a gpc_vertex
    */
   gpc_vertex toGPCVertex();
-}
+};
 
 #endif

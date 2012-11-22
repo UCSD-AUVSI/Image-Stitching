@@ -1,3 +1,5 @@
+#include "GPSFeaturesFinder.h"
+
 void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   vector<Point2f> gpsData;
   vector<KeyPoint> all;
@@ -19,12 +21,6 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     gpc_polygon* intersection = new gpc_polygon();
     gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
     GPSExtremes coord = getGPSExtremes(data.gpsPolygon);
-    /*
-       float maxLon = (float) coord.back(); coord.pop_back();
-       float maxLat = (float) coord.back(); coord.pop_back();
-       float minLon = (float) coord.back(); coord.pop_back();
-       float minLat = (float) coord.back(); coord.pop_back();
-     */
     float maxLon = (float) coord.maxLon;
     float maxLat = (float) coord.maxLat;
     float minLon = (float) coord.minLon;

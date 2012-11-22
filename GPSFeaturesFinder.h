@@ -1,10 +1,23 @@
+#ifndef GPS_FEATURES_FINDER_H
+#define GPS_FEATURES_FINDER_H
+#include <cv.h>
+#include <vector>
+#include "opencv2/stitching/stitcher.hpp"
+#include "opencv2/stitching/detail/matchers.hpp"
+
+using namespace cv;
+using namespace cv::detail;
+using std::vector;
+
+class ImageWithGPS;
+
 class GPSFeaturesFinder : public FeaturesFinder {
   public:
     /**
      * Constructor: Provide all of the images with GPS data for the images that need to 
      * be stitched.
      */
-    GPSFeaturesFinder(vector<ImageWithGPS> images): image_index(-1),
+    GPSFeaturesFinder(vector<ImageWithGPS> imagesWithGPS): image_index(-1),
                                                     imagesWithGPS(imagesWithGPS) {}
 
     /**
@@ -36,3 +49,5 @@ class GPSFeaturesFinder : public FeaturesFinder {
      */
     vector<ImageWithGPS> imagesWithGPS; 
 };
+
+#endif

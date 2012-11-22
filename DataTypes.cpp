@@ -3,7 +3,7 @@
 #include "gpc.h"
 
 cv::Point2f Pixel::toPoint2f(){
-  return Point2f(x,y);
+  return cv::Point2f(x,y);
 }
 
 gpc_vertex LatLon::toGPCVertex(){
