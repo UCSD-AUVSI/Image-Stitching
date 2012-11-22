@@ -19,7 +19,7 @@ using namespace cv;
 using namespace cv::detail;
 
 double metersToGPS(double meters){
-  return meters * 111222.0;
+  return meters / 111222.0;
 }
 
 double toRadians(double degrees){
@@ -61,8 +61,8 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
     double minLon) {
   vector<ImageWithPlaneData> resultImages = vector<ImageWithPlaneData>(rows * columns);
   
-  double heightMeters = image.rows / pixelsPerMeter;
-  double widthMeters = image.rows / pixelsPerMeter;
+  double heightMeters = (double)image.rows / pixelsPerMeter;
+  double widthMeters = (double)image.cols / pixelsPerMeter;
   double maxLat = minLat + metersToGPS(heightMeters); 
   double maxLon = minLon + metersToGPS(widthMeters); 
   double verticalOverlap = CAMERA_V_FOV / CAMERA_H_FOV * horizontalOverlap;
@@ -78,6 +78,11 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
   cout << "Normal Height: " << normalHeight <<"\n";
   cout << "Overlap Width: " << overlapWidth <<"\n";
   cout << "Overlap Height: " << overlapHeight <<"\n";
+  cout << "Pixels per Meter: " << pixelsPerMeter <<"\n";
+  cout << "MinLat: " << minLat << "\n";
+  cout << "MaxLat: " << maxLat << "\n";
+  cout << "MinLon: " << minLon << "\n";
+  cout << "MaxLon: " << maxLon << "\n";
   cout << endl;
 
   int imageX, imageY, imageWidth, imageHeight;
@@ -98,8 +103,8 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
 
       double imageCenterX = imageX + imageWidth / 2;
       double imageCenterY = imageY + imageHeight / 2;
-      double planeLat = minLat + metersToGPS((imageCenterX / image.cols) / pixelsPerMeter);
-      double planeLon = minLon + metersToGPS((imageCenterY / image.rows) / pixelsPerMeter);
+      double planeLat = minLat + metersToGPS(imageCenterY / pixelsPerMeter);
+      double planeLon = minLon + metersToGPS(imageCenterX / pixelsPerMeter);
       double planeAlt = 2 * (imageCenterY / pixelsPerMeter) * tan(0.5 * toDegrees(CAMERA_H_FOV));
       
       cout <<"Image "<<j * rows + i<<"\n";
