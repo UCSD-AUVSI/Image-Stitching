@@ -7,6 +7,8 @@
 #include "stitch.h"
 #include "GPSFeaturesFinder.h"
 #include "gpc.h"
+#include "DataTypes.h"
+#include "camera.h"
 
 #ifdef __WIN32__
 #include "gpc.c"
@@ -24,7 +26,33 @@ double toRadians(double degrees){
   return degrees / 180.0 * M_PI;
 }
 
-vector<ImageWithGPS> getTestDataForImage(Mat image,
+double toDegrees(double radians){
+  return radians * 180.0 / M_PI;
+}
+
+void testGetExtremes(){
+  cerr << "Testing getExtremes...";
+  gpc_vertex bottomLeft; bottomLeft.x = 32; bottomLeft.y = -116;
+  gpc_vertex bottomRight; bottomRight.x = 32;bottomRight.y = -116;
+  gpc_vertex topRight; topRight.x = 33; topRight.y = -116;
+  gpc_vertex topLeft; topLeft.x = 33; topLeft.y = -117;
+  gpc_vertex vertices[] = {topLeft,topRight,bottomRight,bottomLeft};
+  gpc_vertex_list* list = new gpc_vertex_list();
+  list->num_vertices = 4;
+  list->vertex = vertices;
+  gpc_polygon polygon;
+  polygon.num_contours = 1;
+  polygon.hole=0;
+  polygon.contour=list;
+  GPSExtremes extremes = GPSExtremes(polygon);
+  assert(extremes.minLat == 32);    // Min Lat
+  assert(extremes.minLon == -117);  // Min Lon
+  assert(extremes.maxLat== 33);     // Max Lat
+  assert(extremes.maxLon == -116);  // Max Lon
+  cerr <<"Complete\n";
+}
+
+vector<ImageWithPlaneData> getTestDataForImage(Mat image,
     int rows,
     int columns,
     double horizontalOverlap,
@@ -36,7 +64,7 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
   double heightMeters = image.rows / pixelsPerMeter;
   double widthMeters = image.rows / pixelsPerMeter;
   double maxLat = minLat + metersToGPS(heightMeters); 
-  double maxLon = minLon + metersToGPS(widhtMeters); 
+  double maxLon = minLon + metersToGPS(widthMeters); 
   double verticalOverlap = CAMERA_V_FOV / CAMERA_H_FOV * horizontalOverlap;
 
   int normalWidth = image.cols / columns;
@@ -70,8 +98,8 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
 
       double imageCenterX = imageX + imageWidth / 2;
       double imageCenterY = imageY + imageHeight / 2;
-      double planeLat = minLat + metersToGPS((imageCenterX / image.cols) / pixelsPerMeter)
-      double planeLon = minLon + metersToGPS((imageCenterY / image.rows) / pixelsPerMeter)
+      double planeLat = minLat + metersToGPS((imageCenterX / image.cols) / pixelsPerMeter);
+      double planeLon = minLon + metersToGPS((imageCenterY / image.rows) / pixelsPerMeter);
       double planeAlt = 2 * (imageCenterY / pixelsPerMeter) * tan(0.5 * toDegrees(CAMERA_H_FOV));
       
       cout <<"Image "<<j * rows + i<<"\n";
@@ -87,7 +115,7 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
       cout <<endl;
 
       Mat result = Mat(image,Range(imageY, imageY+imageHeight),Range(imageX,imageX +imageWidth));
-      resultImages[rows * j + i] = {
+      resultImages[rows * j + i] = ImageWithPlaneData(
         result,
         planeLat,
         planeLon,
@@ -97,7 +125,7 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
         0.0, // yaw
         0.0, // gimbalRoll
         0.0, // gimbalYaw
-      }
+      );
     }
   }
   return resultImages;
@@ -106,12 +134,9 @@ vector<ImageWithGPS> getTestDataForImage(Mat image,
 int main(){
 
   testGetExtremes();
-  testFindAngleGPS();
-  testDistance();
-  //testFindScale();
 
   Mat pano;
-  vector<ImageWithGPS> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
+  vector<ImageWithPlaneData> images = getTestDataForImage(imread("image.jpg"),2,2,0.2,0.2,0.9);
   imwrite("a.jpg",images[0].image);
   imwrite("b.jpg",images[1].image);
   imwrite("c.jpg",images[2].image);

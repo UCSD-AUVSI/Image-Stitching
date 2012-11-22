@@ -1,4 +1,7 @@
 #include "GPSFeaturesFinder.h"
+#include "DataTypes.h"
+#include <iostream>
+using namespace std;
 
 void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   
@@ -13,18 +16,21 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   cout<<"Image Cols: "<<image.cols<<"\n";
 
   /* Determine the scale of the image */
-  double scale = (double)imageWithData.image.rows / (double)image.rows;
+  double scale = (double) imageWithData.image.rows / (double)image.rows;
   cout << "Scale: " << scale << endl;
 
-  for (unsigned int i = 0; i< otherImages.size(); i++){
-    if(data.image.data == otherImages.at(i).image.data) continue;
+  for (unsigned int i = 0; i< imagesWithData.size(); i++){
+    if(imageWithData.image.data == imagesWithData.at(i).image.data) continue;
 
     /* Compute the intersection between the two GPS polygons */
     gpc_polygon* intersection = new gpc_polygon();
-    gpc_polygon_clip( GPC_INT, data.toGPCPolygon(), otherImages[i].toGPCPolygon(), intersection);
+    gpc_polygon_clip( GPC_INT,
+                      imageWithData.toGPCPolygon(),
+                      imagesWithData[i].toGPCPolygon(),
+                      intersection);
     if (!intersection) continue; // No intersection
-
-    GPSExtremes extremes = getGPSExtremes(data.gpsPolygon);
+ 
+    GPSExtremes extremes(imageWithData.toGPCPolygon());
     
     double maxLon = extremes.maxLon;
     double maxLat = extremes.maxLat;
@@ -34,10 +40,10 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     double dLon = maxLon - minLon;
 
     /* Find the GPS locations of the four points */
-    LatLon point1 = (minLat + dLat / 3, minLon + dLon / 3);
-    LatLon point2 = (minLat + 2 * dLat / 3, minLon + dLon / 3);
-    LatLon point3 = (minLat + 2 * dLat / 3, minLon + 2 * dLon / 3);
-    LatLon point4 = (minLat + dLat / 3, minLon + 2 * dLon / 3);
+    LatLon point1(minLat + dLat / 3, minLon + dLon / 3);
+    LatLon point2(minLat + 2 * dLat / 3, minLon + dLon / 3);
+    LatLon point3(minLat + 2 * dLat / 3, minLon + 2 * dLon / 3);
+    LatLon point4(minLat + dLat / 3, minLon + 2 * dLon / 3);
 
     gpsData.push_back(point1.toPoint2i());
     gpsData.push_back(point2.toPoint2i());

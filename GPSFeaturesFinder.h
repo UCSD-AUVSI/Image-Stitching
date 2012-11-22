@@ -9,7 +9,7 @@ using namespace cv;
 using namespace cv::detail;
 using std::vector;
 
-class ImageWithGPS;
+class ImageWithPlaneData;
 
 class GPSFeaturesFinder : public FeaturesFinder {
   public:
@@ -17,8 +17,8 @@ class GPSFeaturesFinder : public FeaturesFinder {
      * Constructor: Provide all of the images with GPS data for the images that need to 
      * be stitched.
      */
-    GPSFeaturesFinder(vector<ImageWithGPS> imagesWithGPS): image_index(-1),
-                                                    imagesWithGPS(imagesWithGPS) {}
+    GPSFeaturesFinder(vector<ImageWithPlaneData> imagesWithData): imageIndex(-1),
+                                                    imagesWithData(imagesWithData) {}
 
     /**
      * Finds the ImageFeatures. Calls operator()
@@ -38,16 +38,16 @@ class GPSFeaturesFinder : public FeaturesFinder {
   private:
     /**
      * The index of the image that is currently being examined. This element in
-     * imagesWithGPS at the corresponding index has the associated
+     * imagesWithData at the corresponding index has the associated
      * full-resolution image and GPS data
      */
-    int image_index; 
+    int imageIndex; 
 
     /**
      * This vector holds the images that are being stitched together, along with their
-     * corresponding GPS data. This vector is used to find GPS features of the images
+     * corresponding telemetry data. This vector is used to find GPS features of the images
      */
-    vector<ImageWithGPS> imagesWithGPS; 
+    vector<ImageWithPlaneData> imagesWithData; 
 };
 
 #endif
