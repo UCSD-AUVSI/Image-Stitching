@@ -26,14 +26,18 @@ cv::Point2i LatLon::toPoint2i(){
 }
 
 GPSExtremes::GPSExtremes(gpc_polygon* polygon){
+    if (polygon->num_contours == 0 ){
+      throw "Cannot calculate extremes for an empty polygon.";
+    }
     gpc_vertex* vertices = polygon->contour->vertex;
+    int numVertices = polygon->contour->num_vertices;
 	
 	minLat = INT_MAX;
 	minLon = INT_MAX;
 	maxLat = INT_MIN;
 	maxLon = INT_MIN;
 
-	for(int i = 0; i < 4; i++){
+	for(int i = 0; i < numVertices; i++){
 		if (vertices[i].y < minLon ) minLon = vertices[i].y;
 		if (vertices[i].y > maxLon ) maxLon = vertices[i].y;
 		if (vertices[i].x < minLat ) minLat = vertices[i].x;
@@ -43,11 +47,18 @@ GPSExtremes::GPSExtremes(gpc_polygon* polygon){
 
 //TODO: GeoReferencing
 Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
-  return Pixel((int)(rand() % 500),(int)(rand() % 500));
+  GPSExtremes extremes(this->toGPCPolygon());
+  double dLat = extremes.maxLat - extremes.minLat;
+  double dLon = extremes.maxLon - extremes.minLon;
+  double latPart = (latlon.lat - extremes.minLat) / dLat;
+  double lonPart = (latlon.lon - extremes.minLon) / dLon;
+  double x = image.cols * lonPart;
+  double y = image.rows * latPart;
+  return Pixel(x,y);
 }
 
 cv::KeyPoint Pixel::toKeyPoint(double scale){
-  return cv::KeyPoint((float)x/(float)scale,(float)y/(float)scale,1.0);
+  return cv::KeyPoint((float)x/(float)scale,(float)y/(float)scale,100.0);
 }
 
 gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
@@ -129,10 +140,12 @@ gpc_polygon* ImageWithPlaneData::toGPCPolygon(){
                                       vertexAltitude);
   LatLon topLeftPoint = LatLon(vertexLatitude,vertexLongitude);
 
-  cout <<"bottomLeftPoint: ("<<bottomLeftPoint.lat<<", "<<bottomLeftPoint.lon<<")\n";
-  cout <<"topLeftPoint: ("<<topLeftPoint.lat<<", "<<topLeftPoint.lon<<")\n";
-  cout <<"bottomRightPoint: ("<<bottomRightPoint.lat<<", "<<bottomRightPoint.lon<<")\n";
-  cout <<"topRightPoint: ("<<topRightPoint.lat<<", "<<topRightPoint.lon<<")\n";
+  /**
+    cout <<"bottomLeftPoint: ("<<bottomLeftPoint.lat<<", "<<bottomLeftPoint.lon<<")\n";
+    cout <<"topLeftPoint: ("<<topLeftPoint.lat<<", "<<topLeftPoint.lon<<")\n";
+    cout <<"bottomRightPoint: ("<<bottomRightPoint.lat<<", "<<bottomRightPoint.lon<<")\n";
+    cout <<"topRightPoint: ("<<topRightPoint.lat<<", "<<topRightPoint.lon<<")\n";
+  **/
 
   gpc_vertex topLeftVertex = topLeftPoint.toGPCVertex();
   gpc_vertex topRightVertex = topRightPoint.toGPCVertex();

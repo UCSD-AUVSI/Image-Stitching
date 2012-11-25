@@ -17,11 +17,13 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     cout << "Image index: "<< imageIndex << endl;
     assert(false);
   }
-
-  cout<<"ImageWithPlaneData Rows: "<<imageWithData.image.rows<<"\n"; 
-  cout<<"ImageWithPlaneData Cols: "<<imageWithData.image.cols<<"\n";
-  cout<<"Image Rows: "<<image.rows<<"\n"; 
-  cout<<"Image Cols: "<<image.cols<<"\n";
+  /**
+    cout<<"Image "<<imageIndex<<"\n";
+    cout<<"ImageWithPlaneData Rows: "<<imageWithData.image.rows<<"\n"; 
+    cout<<"ImageWithPlaneData Cols: "<<imageWithData.image.cols<<"\n";
+    cout<<"Image Rows: "<<image.rows<<"\n"; 
+    cout<<"Image Cols: "<<image.cols<<"\n";
+  **/
 
   /* Determine the scale of the image */
   double scale = (double) image.rows / (double)imageWithData.image.rows;
@@ -36,9 +38,11 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
                       imageWithData.toGPCPolygon(),
                       imagesWithData[i].toGPCPolygon(),
                       intersection);
-    if (!intersection) continue; // No intersection
+    if (intersection->num_contours == 0 ) continue; // No intersection
+    //gpc_write_polygon(stdout, 1, intersection);
  
-    GPSExtremes extremes(imageWithData.toGPCPolygon());
+    //cout <<"Intersection "<<i<< " extremes :\n";
+    GPSExtremes extremes(intersection);
     
     double maxLon = extremes.maxLon;
     double maxLat = extremes.maxLat;
@@ -46,11 +50,13 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     double minLat = extremes.minLat;
     double dLat = maxLat - minLat;
     double dLon = maxLon - minLon;
-
-    cout <<"minLat: "<<minLat<<endl;
-    cout <<"maxLat: "<<maxLat<<endl;
-    cout <<"minLon: "<<minLon<<endl;
-    cout <<"maxLon: "<<maxLon<<endl;
+    
+    /**
+      cout <<"minLat: "<<minLat<<endl;
+      cout <<"maxLat: "<<maxLat<<endl;
+      cout <<"minLon: "<<minLon<<endl;
+      cout <<"maxLon: "<<maxLon<<endl;
+    **/
 
     /* Find the GPS locations of the four points */
     LatLon point1(minLat + dLat / 3, minLon + dLon / 3);
@@ -80,16 +86,16 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     keyPoints.push_back(keyPoint3);
     keyPoints.push_back(keyPoint4);
 
+    
     cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
-    cout <<"LatLon1: ("<<point1.lat<<","<<point1.lon<<")\n";
+    cout <<"LatLon1: " << point1.toPoint2i() <<"\n";
     cout <<"Pixel2: ("<<pixel2.x<<","<<pixel2.y<<")   ";
-    cout <<"LatLon2: ("<<point2.lat<<","<<point2.lon<<")\n";
+    cout <<"LatLon2: " << point2.toPoint2i() <<"\n";
     cout <<"Pixel3: ("<<pixel3.x<<","<<pixel3.y<<")   ";
-    cout <<"LatLon3: ("<<point3.lat<<","<<point3.lon<<")\n";
+    cout <<"LatLon3: " << point3.toPoint2i() <<"\n";
     cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
-    cout <<"LatLon4: ("<<point4.lat<<","<<point4.lon<<")\n";
+    cout <<"LatLon4: " << point4.toPoint2i() <<"\n";
     cout <<"\n\n";
-
 
   }
 
@@ -97,13 +103,14 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
   /* Add descriptors */
   for(unsigned int i =0; i < gpsData.size(); i++){
-    int* Mi = descriptors.ptr<int>(i);
-    Mi[0] = gpsData[i].x;
-    Mi[1] = gpsData[i].y;
+    float* Mi = descriptors.ptr<float>(i);
+    Mi[0] = (float)gpsData[i].x;
+    Mi[1] = (float)gpsData[i].y;
+    cout <<Mi[0] << " "<<Mi[1] << endl;
   }
 
   features.img_idx = imageIndex;
-  features.img_size =  image.size();
+  features.img_size = image.size();
   features.keypoints = keyPoints;
   features.descriptors = descriptors;
 }

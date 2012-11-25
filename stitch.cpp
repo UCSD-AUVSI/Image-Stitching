@@ -105,7 +105,7 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
       double imageCenterY = imageY + imageHeight / 2;
       double planeLat = minLat + metersToGPS(imageCenterY / pixelsPerMeter);
       double planeLon = minLon + metersToGPS(imageCenterX / pixelsPerMeter);
-      double planeAlt = 2 * (imageCenterY / pixelsPerMeter) * tan(0.5 * toDegrees(CAMERA_H_FOV));
+      double planeAlt = 2 * (imageCenterY / pixelsPerMeter) * tan(0.5 * toRadians(CAMERA_H_FOV));
       
       cout <<"Image "<<j * rows + i<<"\n";
       cout <<"X: "<<imageX<<"\n";
@@ -135,6 +135,7 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
         0.0, // gimbalRoll
         0.0  // gimbalYaw
       ); 
+      gpc_write_polygon(stdout, 0, resultImages[rows * j + i].toGPCPolygon());
     }
   }
   return resultImages;
@@ -150,7 +151,7 @@ int main(){
     imread("image.jpg"),      // image
     2,                        // rows
     2,                        // columns
-    0.2,                      // horizontal overlap,
+    0.4,                      // horizontal overlap,
     1.0,                      // pixels per meter
     32.0,                     // minimum latitude
     -117.0);                  // minimum longitude
