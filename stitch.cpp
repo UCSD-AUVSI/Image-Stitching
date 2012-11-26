@@ -149,7 +149,7 @@ int main(){
   
   vector<ImageWithPlaneData> imagesWithData = getTestDataForImage(
     imread("image.jpg"),      // image
-    2,                        // rows
+    1,                        // rows
     2,                        // columns
     0.4,                      // horizontal overlap,
     1.0,                      // pixels per meter
@@ -158,17 +158,18 @@ int main(){
 
   imwrite("a.jpg",imagesWithData[0].image);
   imwrite("b.jpg",imagesWithData[1].image);
-  imwrite("c.jpg",imagesWithData[2].image);
-  imwrite("d.jpg",imagesWithData[3].image);
+  //imwrite("c.jpg",imagesWithData[2].image);
+  //imwrite("d.jpg",imagesWithData[3].image);
 
   vector<Mat> images;
   images.push_back(imagesWithData[0].image);
   images.push_back(imagesWithData[1].image);
-  images.push_back(imagesWithData[2].image);
-  images.push_back(imagesWithData[3].image);
+  //images.push_back(imagesWithData[2].image);
+  //images.push_back(imagesWithData[3].image);
 
   Stitcher stitcher = stitcher.createDefault(true);
   stitcher.setFeaturesFinder(cv::Ptr<FeaturesFinder>(new GPSFeaturesFinder(imagesWithData)));
+  stitcher.setFeaturesMatcher(new BestOf2NearestMatcher(true, 0.1f,1,1));
 
   stitcher.stitch(images,pano);
   imwrite("result.jpg",pano);

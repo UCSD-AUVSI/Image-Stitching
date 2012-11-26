@@ -58,7 +58,12 @@ Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
 }
 
 cv::KeyPoint Pixel::toKeyPoint(double scale){
-  return cv::KeyPoint((float)x/(float)scale,(float)y/(float)scale,100.0);
+  return cv::KeyPoint((float)x*(float)scale, // x
+                      (float)y*(float)scale, // y
+                      1.0,                   // size
+                      -1,                    // angle
+                      100);                     // response
+
 }
 
 gpc_polygon* ImageWithPlaneData::toGPCPolygon(){

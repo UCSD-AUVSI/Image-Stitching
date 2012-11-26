@@ -1,4 +1,5 @@
 #include "GPSFeaturesFinder.h"
+#include "util.h"
 #include "DataTypes.h"
 #include <iostream>
 using namespace std;
@@ -88,12 +89,16 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
     
     cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
+    printKeyPoint(keyPoint1);
     cout <<"LatLon1: " << point1.toPoint2i() <<"\n";
     cout <<"Pixel2: ("<<pixel2.x<<","<<pixel2.y<<")   ";
+    printKeyPoint(keyPoint2);
     cout <<"LatLon2: " << point2.toPoint2i() <<"\n";
     cout <<"Pixel3: ("<<pixel3.x<<","<<pixel3.y<<")   ";
+    printKeyPoint(keyPoint3);
     cout <<"LatLon3: " << point3.toPoint2i() <<"\n";
     cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
+    printKeyPoint(keyPoint4);
     cout <<"LatLon4: " << point4.toPoint2i() <<"\n";
     cout <<"\n\n";
 
