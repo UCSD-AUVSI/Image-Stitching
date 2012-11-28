@@ -8,7 +8,7 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   imageIndex++;
   
   vector<KeyPoint> keyPoints;
-  vector<Point2i> gpsData;
+  vector<LatLon> gpsData;
 
   /* Associate this image with the data */
   ImageWithPlaneData imageWithData = imagesWithData[imageIndex];
@@ -18,6 +18,7 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     cout << "Image index: "<< imageIndex << endl;
     assert(false);
   }
+
   /**
     cout<<"Image "<<imageIndex<<"\n";
     cout<<"ImageWithPlaneData Rows: "<<imageWithData.image.rows<<"\n"; 
@@ -65,10 +66,10 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     LatLon point3(minLat + 2 * dLat / 3, minLon + 2 * dLon / 3);
     LatLon point4(minLat + dLat / 3, minLon + 2 * dLon / 3);
 
-    gpsData.push_back(point1.toPoint2i());
-    gpsData.push_back(point2.toPoint2i());
-    gpsData.push_back(point3.toPoint2i());
-    gpsData.push_back(point4.toPoint2i());
+    gpsData.push_back(point1);
+    gpsData.push_back(point2);
+    gpsData.push_back(point3);
+    gpsData.push_back(point4);
 
     /* Convert the GPS locations of the points to pixels in the original image */
     Pixel pixel1 = imageWithData.getPixelFor(point1);
@@ -90,16 +91,16 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     
     cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
     printKeyPoint(keyPoint1);
-    cout <<"LatLon1: " << point1.toPoint2i() <<"\n";
+    cout <<"LatLon1: " << point1.lat <<", "<<point1.lon<<endl;
     cout <<"Pixel2: ("<<pixel2.x<<","<<pixel2.y<<")   ";
     printKeyPoint(keyPoint2);
-    cout <<"LatLon2: " << point2.toPoint2i() <<"\n";
+    cout <<"LatLon2: " << point2.lat <<", "<<point2.lon<<endl;
     cout <<"Pixel3: ("<<pixel3.x<<","<<pixel3.y<<")   ";
     printKeyPoint(keyPoint3);
-    cout <<"LatLon3: " << point3.toPoint2i() <<"\n";
+    cout <<"LatLon3: " << point3.lat <<", "<<point3.lon<<endl;
     cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
     printKeyPoint(keyPoint4);
-    cout <<"LatLon4: " << point4.toPoint2i() <<"\n";
+    cout <<"LatLon4: " << point4.lat <<", "<<point4.lon<<endl;
     cout <<"\n\n";
 
   }
@@ -109,8 +110,8 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
   /* Add descriptors */
   for(unsigned int i =0; i < gpsData.size(); i++){
     float* Mi = descriptors.ptr<float>(i);
-    Mi[0] = (float)gpsData[i].x;
-    Mi[1] = (float)gpsData[i].y;
+    Mi[0] = (float)gpsData[i].lat;
+    Mi[1] = (float)gpsData[i].lon;
     cout <<Mi[0] << " "<<Mi[1] << endl;
   }
 
