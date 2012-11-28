@@ -381,6 +381,164 @@ bool GeoReference::forwardGeoreferencing(double plane_latitude,
 	return success;
 }
 
+bool GeoReference::pixelGeoreferencing(  double plane_latitude,
+                                         double plane_longitude,
+                                         double plane_altitude,
+                                         double plane_roll,
+                                         double plane_pitch,
+                                         double plane_heading, 
+                                         double gimbal_roll, 
+                                         double gimbal_pitch, 
+                                         double gimbal_yaw, 
+				                         double target_x,
+                                         double target_y,
+                                         double zoom,
+                                         double Target_Latitude,
+                                         double Target_Longitude, 
+                                         double & x_pixels,
+                                         double & y_pixels,)
+{
+	/////////////////////
+	// Funcs used by forwardGeoreferencing:
+	//	EulerAngles_Plane(), Mat Quaternion(double, double, double, double), Mat Quaternion_Transform(Mat, Mat), 
+	//	Mat NED_to_ECEF(Mat, double, double), Mat ECEF_to_GEO(Mat, double, double, double)
+	/////////////////////
+	
+	// bL = 0,0. tR = w,h.
+	
+
+	double x_fov = 46.0 * PI_TO_RAD;
+	double y_fov = 34.0 * PI_TO_RAD;
+	double a = 6378137;
+	double b = 6356752.3142;
+	double ground_altitude = 0.0;
+
+
+	double pixel_x = target_x;// + x_pixels/2.0;
+	double pixel_y = target_y;// + y_pixels/2.0;
+	double zoom_factor = zoom;
+
+	
+	plane_latitude = plane_latitude * PI_TO_RAD;
+	plane_longitude = plane_longitude * PI_TO_RAD;
+
+	
+
+
+	//double cam_pt_vec[3] = {0,0,1};
+	//cv::Mat Camera_Point_Vector = cv::Mat(3, 1, CV_64FC1, cam_pt_vec);
+	//double cam_up_vec[3] = {1,0,0};
+	//cv::Mat Camera_Up_Vector = cv::Mat(3, 1, CV_64FC1, cam_up_vec);
+
+	//double ground_altitude = 0;
+
+
+	/////////////// Part A /////////////////////
+	double N_vec_arr[3] = {1,0,0};
+	double E_vec_arr[3] = {0,1,0};
+	double D_vec_arr[3] = {0,0,1};
+	cv::Mat Plane_N_vector = cv::Mat(3, 1, CV_64FC1, N_vec_arr);
+	cv::Mat Plane_E_vector = cv::Mat(3, 1, CV_64FC1, E_vec_arr);
+	cv::Mat Plane_D_vector = cv::Mat(3, 1, CV_64FC1, D_vec_arr);
+
+	cv::Mat Camera_Point_Vector = EulerAngles_Plane(Plane_D_vector, plane_roll, plane_pitch, plane_heading);
+	cv::Mat Camera_Up_Vector = EulerAngles_Plane(Plane_N_vector, plane_roll, plane_pitch, plane_heading);
+
+
+
+	/////////////// Part B /////////////////////
+	cv::Mat Q_gimbal_roll = Quaternion(gimbal_roll, Camera_Up_Vector.at<double>(0,0),  Camera_Up_Vector.at<double>(1,0),  Camera_Up_Vector.at<double>(2,0));
+	Camera_Point_Vector = Quaternion_Transform(Camera_Point_Vector, Q_gimbal_roll);
+	Camera_Up_Vector = Quaternion_Transform(Camera_Up_Vector, Q_gimbal_roll);
+
+	cv::Mat axis = Camera_Point_Vector.cross(Camera_Up_Vector); 
+	cv::Mat Q_gimbal_pitch = Quaternion(gimbal_pitch, axis.at<double>(0,0), axis.at<double>(1,0), axis.at<double>(2,0));
+	Camera_Point_Vector = Quaternion_Transform(Camera_Point_Vector, Q_gimbal_pitch);
+	Camera_Up_Vector = Quaternion_Transform(Camera_Up_Vector, Q_gimbal_pitch);
+
+	/////////////// Part C /////////////////////
+	double fovarr[3] = {x_fov, y_fov, 1};
+	cv::Mat FOV(3, 1, CV_64FC1, fovarr );
+	double scalearr[9] = {1/zoom_factor, 0, 0, 0, 1/zoom_factor, 0, 0, 0, 1};
+	cv::Mat Scale(3, 3, CV_64FC1, scalearr );
+
+	cv::Mat FOV_zoom_accounted = Scale*FOV;
+
+	/////////////// Part D /////////////////////
+
+	cv::Mat c_p = Camera_Point_Vector;
+	cv::Mat c_u = Camera_Up_Vector;
+	cv::Mat c_s = c_p.cross(c_u);
+
+
+	double max_w = tan(FOV_zoom_accounted.at<double>(0,0)/2)*2;
+	double max_h = tan(FOV_zoom_accounted.at<double>(1,0)/2)*2;
+
+	double w = max_w * (0.5 - pixel_x/(x_pixels - 1));
+	double h = max_h * (pixel_y/(y_pixels - 1) - 0.5);
+
+	cv::Mat c_f = c_p - (w * c_s) + (h * c_u);
+	cv::Mat Pixel_Point_Vector = c_f;
+
+
+	/////////////// Part E  /////////////////////
+	double f = a/(a-b);
+	double e=sqrt((1/f)*(2-(1/f)));
+	double N=a/(sqrt(1-e*e*sin(plane_latitude)*sin(plane_latitude)));
+
+	double Plane_XYZ_arr[3] = {0,0,0};
+	Plane_XYZ_arr[0] = (N+plane_altitude)*cos(plane_latitude)*cos(plane_longitude);
+	Plane_XYZ_arr[1] = (N+plane_altitude)*cos(plane_latitude)*sin(plane_longitude);
+	Plane_XYZ_arr[2] = (N*(1-e*e)+plane_altitude)*sin(plane_latitude);
+	cv::Mat Plane_XYZ(3, 1, CV_64FC1, Plane_XYZ_arr );
+
+	/////////////// Part F  /////////////////////
+	
+	double temparr[3] = {0, 0, plane_altitude + ground_altitude};
+	cv::Mat temp(3, 1, CV_64FC1, temparr );
+
+	double Ground_XYZ_arr[3] = {0,0,0}; // TODO: fix "plane_latitude"
+	Ground_XYZ_arr[0] = (N)*cos(plane_latitude)*cos(plane_longitude);
+	Ground_XYZ_arr[1] = (N)*cos(plane_latitude)*sin(plane_longitude);
+	Ground_XYZ_arr[2] = (N*(1-e*e))*sin(plane_latitude);
+	cv::Mat Ground_XYZ(3, 1, CV_64FC1, Ground_XYZ_arr );
+
+	cv::Mat Pixel_XYZ = NED_to_ECEF(Pixel_Point_Vector, plane_latitude, plane_longitude);
+	
+	double dist = Plane_XYZ.dot(Ground_XYZ - Plane_XYZ) / Pixel_XYZ.dot(Plane_XYZ);
+
+	cv::Mat Target_XYZ = Plane_XYZ + Pixel_XYZ*dist;
+	
+	cv::Mat Target_GEO = ECEF_to_GEO(Target_XYZ, f, e, a);
+	
+	Target_Latitude = Target_GEO.at<double>(0,0) * 180.0 / M_PI;
+	Target_Longitude = Target_GEO.at<double>(1,0) * 180.0 / M_PI - 180.0;
+	Target_Height = Target_GEO.at<double>(2,0) - N;
+	
+	/////////////// Error Checking /////////////////////
+	bool success = true;
+	if (abs(Target_Latitude) > 180.0 || approxEqual(Target_Latitude, 0.0) || approxEqual(abs(Target_Latitude), 180.0))
+	{
+		Target_Latitude = 1000.0;
+		success = false;
+	}
+
+	if (abs(Target_Longitude) > 180.0 || approxEqual(Target_Longitude, 0.0) || approxEqual(abs(Target_Longitude), 180.0))
+	{
+		Target_Longitude = 1000.0;
+		success = false;
+	}
+
+	if (Pixel_Point_Vector.at<double>(2,0) < 0.0)
+	{
+		Target_Latitude = 1000.0;
+		Target_Longitude = 1000.0;
+		success = false;
+	}
+
+	return success;
+}
+
 cv::Mat GeoReference::EulerAngles(bool transpose, cv::Mat Orig_Vector, double Roll, double Pitch, double Yaw)
 {
 	double transarr[9] = {1,1,1,

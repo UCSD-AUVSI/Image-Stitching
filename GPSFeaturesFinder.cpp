@@ -65,28 +65,33 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     LatLon point2(minLat + 2 * dLat / 3, minLon + dLon / 3);
     LatLon point3(minLat + 2 * dLat / 3, minLon + 2 * dLon / 3);
     LatLon point4(minLat + dLat / 3, minLon + 2 * dLon / 3);
+    // LatLon point5(rand(),rand());
 
     gpsData.push_back(point1);
     gpsData.push_back(point2);
     gpsData.push_back(point3);
     gpsData.push_back(point4);
+    // gpsData.push_back(point5);
 
     /* Convert the GPS locations of the points to pixels in the original image */
     Pixel pixel1 = imageWithData.getPixelFor(point1);
     Pixel pixel2 = imageWithData.getPixelFor(point2);
     Pixel pixel3 = imageWithData.getPixelFor(point3);
     Pixel pixel4 = imageWithData.getPixelFor(point4);
+    // Pixel pixel5 = Pixel(5,5);
 
     /* Convert the pixels in the original images to keypoints in the resized image */
     KeyPoint keyPoint1 = pixel1.toKeyPoint(scale);
     KeyPoint keyPoint2 = pixel2.toKeyPoint(scale);
     KeyPoint keyPoint3 = pixel3.toKeyPoint(scale);
     KeyPoint keyPoint4 = pixel4.toKeyPoint(scale);
+    // KeyPoint keyPoint5 = pixel5.toKeyPoint(scale);
 
     keyPoints.push_back(keyPoint1);
     keyPoints.push_back(keyPoint2);
     keyPoints.push_back(keyPoint3);
     keyPoints.push_back(keyPoint4);
+    // keyPoints.push_back(keyPoint5);
 
     
     cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
@@ -101,6 +106,11 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
     printKeyPoint(keyPoint4);
     cout <<"LatLon4: " << point4.lat <<", "<<point4.lon<<endl;
+    /**
+    cout <<"Pixel5: ("<<pixel5.x<<","<<pixel5.y<<")   ";
+    printKeyPoint(keyPoint5);
+    cout <<"LatLon5: " << point5.lat <<", "<<point5.lon<<endl;
+    **/
     cout <<"\n\n";
 
   }
