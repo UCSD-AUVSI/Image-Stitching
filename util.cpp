@@ -10,6 +10,9 @@ using namespace std;
 using namespace cv;
 using namespace Vision;
 
+
+#define M_PI 3.1415926
+
 vector<ImageWithPlaneData> getTestDataForImage(Mat image,
     int rows,
     int columns,

@@ -10,6 +10,7 @@
 
 #define GIMBAL_YAW		0.0
 #define PI_TO_RAD M_PI / 180.0
+#define M_PI 3.1415926
 
 using namespace std;
 using namespace Vision;
