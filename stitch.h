@@ -26,17 +26,22 @@ class ImageWithGPS{
 };
 vector<double> getExtremes(gpc_vertex* vertices);
 double findScale(Mat img, gpc_polygon gpsPoly);
-
 /*class GPSFeaturesFinder{
 public:
-	void operator ()(const Mat &image, ImageFeatures &features);
+	int img_idx;
+	vector<ImageWithGPS> images;
+	GPSFeaturesFinder(vector<ImageWithGPS> images);
+private:
+	vector<ImageWithGPS> otherImages;
+
 };*/
+
 
 Mat rotateImage(const Mat &source, double angle, Size size);
 ImageFeatures findIntersectionFeatures(ImageWithGPS image1, 
     vector<ImageWithGPS> otherimages, int img_idx);
 
-
+double toDegrees(double radians);
 double distance(double x1, double y1, double x2, double y2);
 double findAngleGPS(double lat1, double lon1, double lat2, double lon2);
 vector<ImageWithGPS> getTestDataForImage(Mat image,
