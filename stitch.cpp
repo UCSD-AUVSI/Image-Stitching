@@ -4,7 +4,6 @@
 #include <vector>
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/detail/matchers.hpp>
-#include "stitch.h"
 #include "GPSFeaturesFinder.h"
 #include "gpc.h"
 #include "DataTypes.h"
