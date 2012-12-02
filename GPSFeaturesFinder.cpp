@@ -115,11 +115,14 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
   }
 
-  Mat descriptors(keyPoints.size(),2,CV_32FC1);
+  Mat descriptors = features.descriptors;
+  if (features.keypoints.size() > 0 ){
+    descriptors = features.descriptors.reshape(0,   // Channel count. 0 indicates the same number of channels
+      features.keypoints.size() + keyPoints.size()); // Allocate space for the other descriptors
+  }
 
-  /* Add descriptors */
   for(unsigned int i =0; i < gpsData.size(); i++){
-    float* Mi = descriptors.ptr<float>(i);
+    float* Mi = descriptors.ptr<float>(features.keypoints.size() + i);
     Mi[0] = (float)gpsData[i].lat;
     Mi[1] = (float)gpsData[i].lon;
     cout <<Mi[0] << " "<<Mi[1] << endl;
@@ -127,6 +130,6 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
   features.img_idx = imageIndex;
   features.img_size = image.size();
-  features.keypoints = keyPoints;
+  features.keypoints.insert(features.keypoints.end(),keyPoints.begin(),keyPoints.end());
   features.descriptors = descriptors;
 }

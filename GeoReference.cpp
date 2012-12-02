@@ -393,8 +393,17 @@ cv::Mat GeoReference::EulerAngles(bool transpose, cv::Mat Orig_Vector, double Ro
 
 }
 
-void GeoReference::reverseGeoreference(double plane_latitude, double plane_longitude, double plane_altitude, double plane_roll, double plane_pitch, double plane_heading, 
-				double Target_Latitude, double Target_Longitude, double Target_Height, double & gimbal_roll, double & gimbal_pitch)
+void GeoReference::reverseGeoreference(double plane_latitude,
+                                       double plane_longitude,
+                                       double plane_altitude,
+                                       double plane_roll,
+                                       double plane_pitch,
+                                       double plane_heading,
+				                       double Target_Latitude,
+                                       double Target_Longitude,
+                                       double Target_Height,
+                                       double & gimbal_roll,
+                                       double & gimbal_pitch)
 {
 	typedef cv::Vec<double, 1> VT;
 

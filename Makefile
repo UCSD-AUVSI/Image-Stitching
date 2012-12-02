@@ -1,12 +1,17 @@
-CC=g++ 
-LDFLAGS =-ggdb
+CC=g++
+CFLAGS =-ggdb
 INC = -I/usr/local/include/opencv
 LIBS = -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_features2d -lopencv_ml -lopencv_highgui -lopencv_objdetect -lopencv_contrib -lopencv_legacy -lopencv_stitching
 
-SOURCES = stitch.cpp gpc.c DataTypes.cpp GPSFeaturesFinder.cpp Georeference.cpp util.cpp test.cpp
+SOURCES= stitch.cpp gpc.cpp DataTypes.cpp GPSFeaturesFinder.cpp GeoReference.cpp util.cpp test.cpp
 
-stitch: $(SOURCES)
-	$(CC) $(LDFLAGS) $(INC) $(LIBS) $(SOURCES) -o $@
+OBJECTS=$(SOURCES:.cpp=.o) 
+
+stitch: $(OBJECTS)
+	$(CC) $(LDFLAGS) $(INC) $(LIBS) $(OBJECTS) -o $@
+
+%.o: %.cpp
+	$(CC) -c $(CFLAGS) $(INC) $(LIBS) $<
 
 clean: 
 	rm -f *.o stitch

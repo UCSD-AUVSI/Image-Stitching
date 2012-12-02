@@ -21,6 +21,3 @@ Image-Stitching TODO
 - Extra fun
   - Map to Google Maps
   - Orthorectification
-  
-
-  
