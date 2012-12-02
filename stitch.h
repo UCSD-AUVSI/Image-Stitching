@@ -1,3 +1,4 @@
+
 #ifndef STITCH_H
 #define STITCH_H
 #include <iostream>
@@ -26,7 +27,7 @@ class ImageWithGPS{
 };
 vector<double> getExtremes(gpc_vertex* vertices);
 double findScale(Mat img, gpc_polygon gpsPoly);
-/*class GPSFeaturesFinder{
+class GPSFeaturesFinder{
 public:
 	int img_idx;
 	vector<ImageWithGPS> images;
@@ -34,7 +35,7 @@ public:
 private:
 	vector<ImageWithGPS> otherImages;
 
-};*/
+};
 
 
 Mat rotateImage(const Mat &source, double angle, Size size);

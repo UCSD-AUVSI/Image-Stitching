@@ -1,90 +1,132 @@
+#include "GPSFeaturesFinder.h"
+#include "util.h"
+#include "DataTypes.h"
+#include <iostream>
+using namespace std;
+
 void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
-  vector<Point2f> gpsData;
-  vector<KeyPoint> all;
-  ImageWithGPS data;
-  img_idx++;
-  data = otherImages[img_idx];
+  imageIndex++;
+  
+  vector<KeyPoint> keyPoints;
+  vector<LatLon> gpsData;
 
-  cout<<"ImageWithGPS Rows: "<<data.image.rows<<"\n"; 
-  cout<<"ImageWithGPS Cols: "<<data.image.cols<<"\n";
-  cout<<"Image Rows: "<<image.rows<<"\n"; 
-  cout<<"Image Cols: "<<image.cols<<"\n";
+  /* Associate this image with the data */
+  ImageWithPlaneData imageWithData = imagesWithData[imageIndex];
 
-  double scale = (double)image.rows / (double)data.image.rows;
+  if (imageWithData.image.rows == 0 || imageWithData.image.cols == 0){
+    cout << "GPSFeatureFinder failed: imageWithData is empty\n";
+    cout << "Image index: "<< imageIndex << endl;
+    assert(false);
+  }
+
+  /**
+    cout<<"Image "<<imageIndex<<"\n";
+    cout<<"ImageWithPlaneData Rows: "<<imageWithData.image.rows<<"\n"; 
+    cout<<"ImageWithPlaneData Cols: "<<imageWithData.image.cols<<"\n";
+    cout<<"Image Rows: "<<image.rows<<"\n"; 
+    cout<<"Image Cols: "<<image.cols<<"\n";
+  **/
+
+  /* Determine the scale of the image */
+  double scale = (double) image.rows / (double)imageWithData.image.rows;
   cout << "Scale: " << scale << endl;
 
-  for (unsigned int i = 0; i< otherImages.size(); i++){
-    if(data.image.data == otherImages.at(i).image.data) continue;
+  for (unsigned int i = 0; i< imagesWithData.size(); i++){
+    if(imageWithData.image.data == imagesWithData.at(i).image.data) continue;
 
+    /* Compute the intersection between the two GPS polygons */
     gpc_polygon* intersection = new gpc_polygon();
-    gpc_polygon_clip( GPC_INT, &data.gpsPolygon, &otherImages[i].gpsPolygon,intersection);
-    GPSExtremes coord = getGPSExtremes(data.gpsPolygon);
-    /*
-       float maxLon = (float) coord.back(); coord.pop_back();
-       float maxLat = (float) coord.back(); coord.pop_back();
-       float minLon = (float) coord.back(); coord.pop_back();
-       float minLat = (float) coord.back(); coord.pop_back();
-     */
-    float maxLon = (float) coord.maxLon;
-    float maxLat = (float) coord.maxLat;
-    float minLon = (float) coord.minLon;
-    float minLat = (float) coord.minLat;
-    vector<int> ul = data.gpsToPixels(maxLon, minLat);
-    vector<int> ur = data.gpsToPixels(maxLon, maxLat);
-    vector<int> bl = data.gpsToPixels(minLon, minLat);
-    vector<int> br = data.gpsToPixels(minLon, maxLat);
+    gpc_polygon_clip( GPC_INT,
+                      imageWithData.toGPCPolygon(),
+                      imagesWithData[i].toGPCPolygon(),
+                      intersection);
+    if (intersection->num_contours == 0 ) continue; // No intersection
+    //gpc_write_polygon(stdout, 1, intersection);
+ 
+    //cout <<"Intersection "<<i<< " extremes :\n";
+    GPSExtremes extremes(intersection);
+    
+    double maxLon = extremes.maxLon;
+    double maxLat = extremes.maxLat;
+    double minLon = extremes.minLon;
+    double minLat = extremes.minLat;
+    double dLat = maxLat - minLat;
+    double dLon = maxLon - minLon;
+    
+    /**
+      cout <<"minLat: "<<minLat<<endl;
+      cout <<"maxLat: "<<maxLat<<endl;
+      cout <<"minLon: "<<minLon<<endl;
+      cout <<"maxLon: "<<maxLon<<endl;
+    **/
 
-    /*
-       ul[0] *= scale;
-       ul[1] *= scale;
-       ur[0] *= scale;
-       ur[1] *= scale;
-       bl[0] *= scale;
-       bl[1] *= scale;
-       br[0] *= scale;
-       br[1] *= scale;
-     */
+    /* Find the GPS locations of the four points */
+    LatLon point1(minLat + dLat / 3, minLon + dLon / 3);
+    LatLon point2(minLat + 2 * dLat / 3, minLon + dLon / 3);
+    LatLon point3(minLat + 2 * dLat / 3, minLon + 2 * dLon / 3);
+    LatLon point4(minLat + dLat / 3, minLon + 2 * dLon / 3);
+    // LatLon point5(rand(),rand());
 
-    Point2f ulPoint = Point2f((float)ul[0], (float)ul[1]);
-    Point2f urPoint = Point2f((float)ur[0], (float)ur[1]);
-    Point2f blPoint = Point2f((float)bl[0], (float)bl[1]);
-    Point2f brPoint = Point2f((float)br[0], (float)br[1]);
+    gpsData.push_back(point1);
+    gpsData.push_back(point2);
+    gpsData.push_back(point3);
+    gpsData.push_back(point4);
+    // gpsData.push_back(point5);
 
-    KeyPoint ulKeyPt = KeyPoint(ulPoint, 1);
-    KeyPoint urKeyPt = KeyPoint(urPoint, 1);
-    KeyPoint blKeyPt = KeyPoint(blPoint, 1);
-    KeyPoint brKeyPt = KeyPoint(brPoint, 1);
+    /* Convert the GPS locations of the points to pixels in the original image */
+    Pixel pixel1 = imageWithData.getPixelFor(point1);
+    Pixel pixel2 = imageWithData.getPixelFor(point2);
+    Pixel pixel3 = imageWithData.getPixelFor(point3);
+    Pixel pixel4 = imageWithData.getPixelFor(point4);
+    // Pixel pixel5 = Pixel(5,5);
 
-    cout <<"UlPt: "<<ulPoint<<endl;
-    cout <<"UrPt: "<<urPoint<<endl;
-    cout <<"BlPt: "<<blPoint<<endl;
-    cout <<"BrPt: "<<brPoint<<endl;
+    /* Convert the pixels in the original images to keypoints in the resized image */
+    KeyPoint keyPoint1 = pixel1.toKeyPoint(scale);
+    KeyPoint keyPoint2 = pixel2.toKeyPoint(scale);
+    KeyPoint keyPoint3 = pixel3.toKeyPoint(scale);
+    KeyPoint keyPoint4 = pixel4.toKeyPoint(scale);
+    // KeyPoint keyPoint5 = pixel5.toKeyPoint(scale);
 
-    all.push_back(ulKeyPt);
-    all.push_back(urKeyPt);
-    all.push_back(blKeyPt);
-    all.push_back(brKeyPt);
+    keyPoints.push_back(keyPoint1);
+    keyPoints.push_back(keyPoint2);
+    keyPoints.push_back(keyPoint3);
+    keyPoints.push_back(keyPoint4);
+    // keyPoints.push_back(keyPoint5);
 
-    gpsData.push_back(Point2f (maxLon,minLat));
-    gpsData.push_back(Point2f (maxLon,maxLat));
-    gpsData.push_back(Point2f (minLon, minLat));
-    gpsData.push_back(Point2f (minLon,maxLat));
+    
+    cout <<"Pixel1: ("<<pixel1.x<<","<<pixel1.y<<")   ";
+    printKeyPoint(keyPoint1);
+    cout <<"LatLon1: " << point1.lat <<", "<<point1.lon<<endl;
+    cout <<"Pixel2: ("<<pixel2.x<<","<<pixel2.y<<")   ";
+    printKeyPoint(keyPoint2);
+    cout <<"LatLon2: " << point2.lat <<", "<<point2.lon<<endl;
+    cout <<"Pixel3: ("<<pixel3.x<<","<<pixel3.y<<")   ";
+    printKeyPoint(keyPoint3);
+    cout <<"LatLon3: " << point3.lat <<", "<<point3.lon<<endl;
+    cout <<"Pixel4: ("<<pixel4.x<<","<<pixel4.y<<")   ";
+    printKeyPoint(keyPoint4);
+    cout <<"LatLon4: " << point4.lat <<", "<<point4.lon<<endl;
+    /**
+    cout <<"Pixel5: ("<<pixel5.x<<","<<pixel5.y<<")   ";
+    printKeyPoint(keyPoint5);
+    cout <<"LatLon5: " << point5.lat <<", "<<point5.lon<<endl;
+    **/
+    cout <<"\n\n";
+
   }
 
-  Mat descriptors(all.size(),2,CV_32FC1);
+  Mat descriptors(keyPoints.size(),2,CV_32FC1);
 
+  /* Add descriptors */
   for(unsigned int i =0; i < gpsData.size(); i++){
-    int* Mi = descriptors.ptr<int>(i);
-    Mi[0] = 5; // gpsData[i].x * 1000.0;
-    Mi[1] = 5; // gpsData[i].y * 1000.0;
-  }
-  for(unsigned int i =0; i < gpsData.size(); i++){
-    int* Mi = descriptors.ptr<int>(i);
-    cout <<Mi[0]<<" "<<Mi[1]<<endl;
+    float* Mi = descriptors.ptr<float>(i);
+    Mi[0] = (float)gpsData[i].lat;
+    Mi[1] = (float)gpsData[i].lon;
+    cout <<Mi[0] << " "<<Mi[1] << endl;
   }
 
-  features.img_idx = img_idx;
-  features.img_size =  image.size();
-  features.keypoints = all;
+  features.img_idx = imageIndex;
+  features.img_size = image.size();
+  features.keypoints = keyPoints;
   features.descriptors = descriptors;
 }
