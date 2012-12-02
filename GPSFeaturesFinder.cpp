@@ -115,10 +115,12 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
   }
 
-  Mat descriptors = features.descriptors;
+  Mat descriptors;
   if (features.keypoints.size() > 0 ){
     descriptors = features.descriptors.reshape(0,   // Channel count. 0 indicates the same number of channels
       features.keypoints.size() + keyPoints.size()); // Allocate space for the other descriptors
+  } else {
+    descriptors = Mat(keyPoints.size(),2,CV_32FC1); 
   }
 
   for(unsigned int i =0; i < gpsData.size(); i++){
