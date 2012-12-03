@@ -2,8 +2,8 @@
 #define UTIL_H
 
 #include <cv.h>
-#include "DataTypes.h"
 #include <vector>
+struct ImageWithPlaneData;
 
 std::vector<ImageWithPlaneData> getTestDataForImage(cv::Mat image,
     int rows,

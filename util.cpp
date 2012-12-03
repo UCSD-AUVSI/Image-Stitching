@@ -1,8 +1,10 @@
 #include "util.h"
 #include <cv.h>
 #include <iostream>
+#include <vector>
 #include "camera.h"
 #include "GeoReference.h"
+#include "DataTypes.h"
 
 using namespace std;
 using namespace cv;

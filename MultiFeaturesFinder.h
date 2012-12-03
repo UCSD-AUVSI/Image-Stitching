@@ -5,14 +5,15 @@
 #include <vector>
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/detail/matchers.hpp>
+#include "GPSFeaturesFinder.h"
 
 using namespace cv;
 using namespace cv::detail;
 
 class MultiFeaturesFinder : public FeaturesFinder {
   public:
-    MultiFeaturesFinder(FeaturesFinder* finder1, FeaturesFinder* finder2):
-      finder1(finder1), finder2(finder2) {}
+    MultiFeaturesFinder(SurfFeaturesFinder* surfFinder, GPSFeaturesFinder* gpsFinder):
+      surfFinder(surfFinder), gpsFinder(gpsFinder) {}
 
     /**
      * Finds the ImageFeatures. Calls operator()
@@ -27,9 +28,11 @@ class MultiFeaturesFinder : public FeaturesFinder {
      * combines them 
      */
     void operator ()(const Mat &image, ImageFeatures &features){
-      finder1(image,features);
-      finder2(image,features);
+      (*surfFinder)(image,features);
+      (*gpsFinder)(image,features);
     }
   private:
-    FeaturesFinder *finder1, *finder2;
-}
+    FeaturesFinder *surfFinder, *gpsFinder;
+};
+
+#endif
