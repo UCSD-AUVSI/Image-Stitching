@@ -65,10 +65,10 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
       }
     }
 
-    Mat descriptors  = Mat(keyPoints.size(),128,CV_32FC1); 
+    Mat descriptors = Mat(keyPoints.size(),128,CV_32FC1); 
 
     for(unsigned int i =0; i < gpsData.size(); i++){
-      float* Mi = descriptors.ptr<float>(features.keypoints.size() + i);
+      float* Mi = descriptors.ptr<float>(i);
       Mi[0] = (float)gpsData[i].lat;
       Mi[1] = (float)gpsData[i].lon;
       for (int j = 2; j < 128; j++){
@@ -79,6 +79,8 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
 
     features.img_idx = imageIndex;
     features.img_size = image.size();
+    //features.keypoints = keyPoints;
+    //features.descriptors = descriptors;
     features.keypoints.insert(features.keypoints.end(),keyPoints.begin(),keyPoints.end());
     features.descriptors.push_back(descriptors);
   }
