@@ -25,29 +25,35 @@ int main(int argc, char* argv[]){
   
   if ( argc > 2 ){
     //// ITERATIVE
-      int step = 1, imagesPerStep = 5;
+      int step = 0, imagesPerStep = 50;
       Stitcher stitcher = stitcher.createDefault(true);
-      vector<Mat> images, completed;
-
+      stitcher.setFeaturesFinder(new SurfFeaturesFinder(500));
+      stitcher.setExposureCompensator(new NoExposureCompensator());
+      stitcher.setFeaturesMatcher(new BestOf2NearestMatcher(false, 0.2f)); 
+      vector<Mat> images,completed, toStitch;
       for (int i = 1; i < argc; i++){
         cout << "Adding: "<<argv[i] << endl;
         Mat image = imread(argv[i]);
         Mat resized;
-        cv::resize(image,resized,Size(0,0),0.1,0.1);
+        cv::resize(image,resized,Size(0,0),0.2,0.2);
         images.push_back(resized);
       }
       Mat pano;
       while(images.size() > 1){
         for(int i = 1; i < images.size(); i++){
-          vector<Mat> toStitch;
           toStitch.push_back(images[i]);
-          if (i >= imagesPerStep || i == images.size()-1 ){
+          if (i % imagesPerStep == 0 || i == images.size()-1 ){
             if (stitcher.stitch(toStitch,pano) == Stitcher::OK){
               Mat temp;
               pano.copyTo(temp);
               completed.push_back(temp);
+            } else {
+              for (int i = 0; i < toStitch.size(); i++){
+                completed.push_back(toStitch[i]);
+              }
+              cerr << "STITCHING FAILED!";
             }
-            images = vector<Mat>();
+            toStitch = vector<Mat>();
           }
         }
         cout <<"Completed step " << step++ << endl;

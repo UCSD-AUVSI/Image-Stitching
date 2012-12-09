@@ -101,12 +101,14 @@ cv::Mat GeoReference::intersectLinePlane(cv::Mat p1, cv::Mat p2, cv::Mat p3, cv:
   double x = x4 + (x5 - x4)*t;
   double y = y4 + (y5 - y4)*t;
   double z = z4 + (z5 - z4)*t;
-  return cv::Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  return cv::Mat_<double>(3,1) << x, y, z;
 }
 
 double GeoReference::scalarProjection(cv::Mat A, cv::Mat B){
+  cout << "ScalarProj: (" << A << " and " << B << endl;
   cv::Mat bNorm;
   cv::normalize(B,bNorm);
+  cout << "B normalized: " << bNorm << endl;
   return A.dot(bNorm);
 }
 
@@ -448,11 +450,11 @@ cv::Mat GeoReference::EulerAngles(bool transpose, cv::Mat Orig_Vector, double Ro
 void GeoReference::pixelGeoreference(double plane_latitude_deg,
                                      double plane_longitude_deg,
                                      double plane_altitude,
-                                     double plane_roll,
-                                     double plane_pitch,
-                                     double plane_heading,
-                                     double gimbal_roll,
-                                     double gimbal_pitch,
+                                     double plane_roll_deg,
+                                     double plane_pitch_deg,
+                                     double plane_heading_deg,
+                                     double gimbal_roll_deg,
+                                     double gimbal_pitch_deg,
                                      double target_latitude_deg,
                                      double target_longitude_deg,
                                      double horizontal_fov,
@@ -461,6 +463,12 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
                                      double y_pixels,
                                      double& pixel_x,
                                      double& pixel_y){
+
+  double gimbal_roll = gimbal_roll_deg * M_PI / 180.0;
+  double gimbal_pitch = gimbal_pitch_deg * M_PI / 180.0;
+  double plane_roll = plane_roll_deg * M_PI / 180.0;
+  double plane_pitch = plane_pitch_deg * M_PI / 180.0;
+  double plane_heading = plane_heading_deg * M_PI / 180.0;
   double plane_latitude = plane_latitude_deg * M_PI / 180.0;
   double plane_longitude = plane_longitude_deg * M_PI / 180.0;
   double target_latitude = target_latitude_deg * M_PI / 180.0;
@@ -469,6 +477,22 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
   double y_fov = vertical_fov * M_PI / 180.0;
   double a = 6378137.0;
   double b = 6356752.3142;
+
+  cerr << "gimbal_roll: " << gimbal_roll << endl;
+  cerr << "gimbal_pitch: " << gimbal_pitch << endl;
+  cerr << "plane_roll: " << plane_roll << endl;
+  cerr << "plane_pitch: " << plane_pitch << endl;
+  cerr << "plane_heading: " << plane_heading << endl;
+  cerr << "plane_latitude: " << plane_latitude << endl;
+  cerr << "plane_longitude: " << plane_longitude << endl;
+  cerr << "plane_altitude: " << plane_altitude << endl;
+  cerr << "target_latitude: " << target_latitude << endl;
+  cerr << "target_longitude: " << target_longitude << endl;
+  cerr << "x_fov: " << x_fov << endl;
+  cerr << "y_fov: " << x_fov << endl;
+  cerr << "x_pixels: " << x_pixels << endl;
+  cerr << "y_pixels: " << x_pixels << endl;
+
 
 /* -------------------------- Part A ----------------------------- */
 
@@ -495,6 +519,12 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
 
   cv::Mat Camera_Point_Vector = plane_D_vector;
   cv::Mat Camera_Up_Vector = plane_N_vector;
+
+  cerr << "Q_plane_roll: " << Q_plane_roll << endl;
+  cerr << "Q_plane_pitch: " << Q_plane_pitch << endl;
+  cerr << "Q_plane_yaw: " << Q_plane_yaw << endl;
+  cerr << "plane_D_vector" << plane_D_vector << endl;
+  cerr << "plane_N_vector" << plane_N_vector << endl;
 
 /* -------------------------- Part B ----------------------------- */
 
@@ -537,6 +567,8 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
   Plane_XYZ_arr[2] = (N*(1-e*e)+plane_altitude)*sin(plane_latitude);
   cv::Mat Plane_XYZ(3, 1, CV_64FC1, Plane_XYZ_arr );
 
+  cerr << "Plane_XYZ: " << Plane_XYZ << endl;
+
 /* -------------------------- Part E ----------------------------- */
 
   double target_altitude = 0;
@@ -546,9 +578,12 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
   Ground_XYZ_arr[2] = (N*(1-e*e)+target_altitude)*sin(target_latitude);
   cv::Mat Ground_XYZ(3, 1, CV_64FC1, Ground_XYZ_arr );
 
+  cerr << "Ground_XYZ: " << Ground_XYZ << endl;
+  
   // points from plane's location to the target location in ECEF
   cv::Mat Ground_Point_Vector = Ground_XYZ - Plane_XYZ; 
   Ground_Point_Vector = Ground_Point_Vector/norm(Ground_Point_Vector); // unit vector
+  cerr << "Ground_Point_Vector: " << Ground_Point_Vector << endl;
 
 /* -------------------------- Part F ----------------------------- */
 
@@ -567,19 +602,31 @@ void GeoReference::pixelGeoreference(double plane_latitude_deg,
   // obtain the intersection point
   cv::Mat E = GeoReference::intersectLinePlane(P1,P2,P3,P4,P5); 
 
+  cout << "Intersection Point: " << E << endl;
+
   cv::Mat PE = E - Plane_XYZ;
   cv::Mat U = CUV_XYZ;
   cv::Mat Z = Camera_Point_Vector.cross(Camera_Up_Vector);
+  cout << "PE: " <<  PE << endl;
+  cout << "U: " <<  U << endl;
+  cout << "Z: " <<  Z << endl;
 
   // project PE onto U to get the y-component vector
   double y_component = scalarProjection(PE, U);
   double x_component = scalarProjection(PE, Z);
 
+  cerr << "x_component: "<<x_component << endl;
+  cerr << "y_component: "<<y_component << endl;
+
   // obtain the pixel locations
   double tot_y = 2*tan(y_fov/2); // x distance in the viewing box
   double tot_x = 2*tan(x_fov/2); // y distance in the viewing box
-  pixel_y = (1+2*y_component/tot_y)*y_pixels/2;
-  pixel_x = (1+2*x_component/tot_x)*x_pixels/2;
+
+  cerr << "tot_x: "<<tot_x << endl;
+  cerr << "tot_y: "<<tot_y << endl;
+
+  pixel_y = (1.0+2.0*y_component/tot_y)*(double)y_pixels/2.0;
+  pixel_x = (1.0+2.0*x_component/tot_x)*(double)x_pixels/2.0;
 }
 
 void GeoReference::reverseGeoreference(double plane_latitude,

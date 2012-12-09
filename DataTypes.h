@@ -2,6 +2,7 @@
 #define DATATYPES_H
 
 #include <cv.h>
+#include <ostream>
 #include "gpc.h"
 
 struct Pixel {
@@ -14,7 +15,15 @@ struct Pixel {
    */
   cv::Point2f toPoint2f();
   cv::KeyPoint toKeyPoint(double scale);
+
+
 };
+
+/**
+std::ostream& operator<<(std::ostream &strm, Pixel &pixel) {
+  return strm << "Pixel(" << pixel.x << ", " << pixel.y <<")";
+};
+**/
 
 struct LatLon {
   double lat;
@@ -32,6 +41,12 @@ struct LatLon {
    */
   cv::Point2i toPoint2i();
 };
+
+/**
+std::ostream& operator<<(std::ostream &strm, const LatLon &latlon) {
+  return strm << "LatLon(" << latlon.lat << ", " << latlon.lon <<")";
+};
+**/
 
 struct ImageWithPlaneData {
   cv::Mat image;

@@ -47,12 +47,11 @@ GPSExtremes::GPSExtremes(gpc_polygon* polygon){
 	}
 }
 
-//TODO: GeoReferencing
 Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
   double pixelX, pixelY;
   GeoReference::pixelGeoreference(latitude,
                     longitude,
-                    altitude,
+                    100,
                     roll,
                     pitch,
                     yaw,
@@ -66,7 +65,15 @@ Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
                     image.rows,
                     pixelX,
                     pixelY);
-  return Pixel(pixelX,pixelY);
+  Pixel result = Pixel(pixelX,pixelY);
+
+  if ( pixelX < 0 || pixelX > image.cols || pixelY < 0 || pixelY > image.rows){
+    // cerr << result << " is not valid for " << latlon << endl;
+    throw "Error";
+  }
+
+  //cout << "The pixel for " << latlon << " is " << result << endl;
+  return result;
 }
 
 cv::KeyPoint Pixel::toKeyPoint(double scale){
