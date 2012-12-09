@@ -42,6 +42,23 @@ namespace Vision
 		static void reverseGeoreference(double plane_latitude, double plane_longitude, double plane_altitude, double plane_roll, double plane_pitch, double plane_heading, 
 				double Target_Latitude, double Target_Longitude, double Target_Height, double & gimbal_roll, double & gimbal_pitch);
 
+      static void pixelGeoreference(double plane_latitude_deg,
+                                     double plane_longitude_deg,
+                                     double plane_altitude_deg,
+                                     double plane_roll,
+                                     double plane_pitch,
+                                     double plane_heading,
+                                     double gimbal_roll,
+                                     double gimbal_pitch,
+                                     double target_latitude_deg,
+                                     double target_longitude_deg,
+                                     double horizontal_fov,
+                                     double vertical_fov,
+                                     double x_pixels,
+                                     double y_pixels,
+                                     double& pixel_x,
+                                     double& pixel_y);
+
 		static bool forwardGeoreferencing(double plane_latitude,
                                           double plane_longitude,
                                           double plane_altitude,
@@ -62,6 +79,8 @@ namespace Vision
 
 		
 	private:
+        static cv::Mat intersectLinePlane(cv::Mat p1, cv::Mat p2, cv::Mat p3, cv::Mat p4, cv::Mat p5);
+        static double scalarProjection(cv::Mat A, cv::Mat B);
 		static cv::Mat Quaternion(double theta, double X, double Y, double Z);
 		static cv::Mat Quaternion_Transform(cv::Mat Orig_Vector, cv::Mat Quat);
 		static cv::Mat ECEF_to_NED(cv::Mat ECEF, double Latitude, double Longitude);

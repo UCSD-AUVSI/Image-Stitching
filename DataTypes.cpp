@@ -1,8 +1,10 @@
 #include <cv.h>
 #include "DataTypes.h"
 #include "gpc.h"
+#include "camera.h"
 #include "GeoReference.h"
 #include <iostream>
+using namespace Vision;
 using namespace std;
 
 cv::Point2f Pixel::toPoint2f(){
@@ -47,14 +49,24 @@ GPSExtremes::GPSExtremes(gpc_polygon* polygon){
 
 //TODO: GeoReferencing
 Pixel ImageWithPlaneData::getPixelFor(LatLon latlon){
-  GPSExtremes extremes(this->toGPCPolygon());
-  double dLat = extremes.maxLat - extremes.minLat;
-  double dLon = extremes.maxLon - extremes.minLon;
-  double latPart = (latlon.lat - extremes.minLat) / dLat;
-  double lonPart = (latlon.lon - extremes.minLon) / dLon;
-  double x = image.cols * lonPart;
-  double y = image.rows * latPart;
-  return Pixel(x,y);
+  double pixelX, pixelY;
+  GeoReference::pixelGeoreference(latitude,
+                    longitude,
+                    altitude,
+                    roll,
+                    pitch,
+                    yaw,
+                    gimbalRoll,
+                    gimbalPitch,
+                    latlon.lat,
+                    latlon.lon,
+                    CAMERA_H_FOV,
+                    CAMERA_V_FOV,
+                    image.cols,
+                    image.rows,
+                    pixelX,
+                    pixelY);
+  return Pixel(pixelX,pixelY);
 }
 
 cv::KeyPoint Pixel::toKeyPoint(double scale){

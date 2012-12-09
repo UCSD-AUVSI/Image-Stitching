@@ -98,6 +98,41 @@ vector<ImageWithPlaneData> getTestDataForImage(Mat image,
   }
   return resultImages;
 }
+/**
+vector<ImageWithPlaneData> getTestDataForImage(Mat image,
+    int rows,
+    int columns,
+    double planeAlt,
+    double minLat,
+    double minLon,
+    double maxLat,
+    double maxLon) {
+  vector<ImageWithPlaneData> resultImages = vector<ImageWithPlaneData>(rows * columns);
+  double dLat = maxLat - minLat;
+  double dLon = maxLon - minLon;
+  for (int j = 0; j < rows; j++){
+    for (int i = 0; i < columns; i++){
+      double planeLat = minLat + (j+1) / (rows + 1);
+      double planeLon = minLon + (i+1) / (cols + 1);
+      PixelExtremes pixelBoundaries = getCornerPixels(result,planeLat,planeLon,planeAlt);
+      Mat result = Mat(image,Range(pixelBoundaries.minY,pixelBoundaries.maxY), 
+                             Range(pixelBoundaries.minX,pixelBoundaries.maxX));
+      resultImages[rows * j + i] = ImageWithPlaneData(
+        result,
+        planeLat,
+        planeLon,
+        planeAlt,
+        0.0, // roll
+        0.0, // pitch
+        0.0, // yaw
+        0.0, // gimbalRoll
+        0.0  // gimbalYaw
+      ); 
+    }
+  }
+  return resultImages;
+}
+**/
 void printKeyPoint(cv::KeyPoint keyPoint){
   cout << "KeyPoint(" << keyPoint.pt << " size: " << keyPoint.size << " response: " 
        << keyPoint.response << ")\n";

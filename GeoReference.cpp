@@ -58,6 +58,58 @@ double atand(double input)
 	return atan(input)*180.0/M_PI;
 }
 
+/**
+  intersects the plane given by the points {p1, p2, p3}
+  with the line given by the points {p4, p5}
+  This function uses the math given at 
+  http://mathworld.wolfram.com/Line-PlaneIntersection.html
+  Written by Tim Wheeler
+**/
+cv::Mat GeoReference::intersectLinePlane(cv::Mat p1, cv::Mat p2, cv::Mat p3, cv::Mat p4, cv::Mat p5){
+  // Extract for convenience
+   double x1 = p1.ptr<double>(0)[1];
+   double x2 = p2.ptr<double>(0)[1];
+   double x3 = p3.ptr<double>(0)[1];
+   double x4 = p4.ptr<double>(0)[1];
+   double x5 = p5.ptr<double>(0)[1];
+   double y1 = p1.ptr<double>(0)[2];
+   double y2 = p2.ptr<double>(0)[2];
+   double y3 = p3.ptr<double>(0)[2];
+   double y4 = p4.ptr<double>(0)[2];
+   double y5 = p5.ptr<double>(0)[2];
+   double z1 = p1.ptr<double>(0)[3];
+   double z2 = p2.ptr<double>(0)[3];
+   double z3 = p3.ptr<double>(0)[3];
+   double z4 = p4.ptr<double>(0)[3];
+   double z5 = p5.ptr<double>(0)[3];
+
+   double a[4][4] = { {1 ,1 ,1 ,1 },
+                      {x1,x2,x3,x4},
+                      {y1,y2,y3,y4},
+                      {z1,z2,z3,z4},
+                    };
+   double b[4][4] = { {1 ,1 ,1 ,0 },
+                      {x1,x2,x3,x5 - x4},
+                      {y1,y2,y3,y5 - y4},
+                      {z1,z2,z3,z5 - z4},
+                    };
+
+  cv::Mat A = cv::Mat(4, 4, CV_64F, a).inv();
+  cv::Mat B = cv::Mat(4, 4, CV_64F, b).inv();
+
+  double t = - cv::determinant(A) / cv::determinant(B);
+  double x = x4 + (x5 - x4)*t;
+  double y = y4 + (y5 - y4)*t;
+  double z = z4 + (z5 - z4)*t;
+  return cv::Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+}
+
+double GeoReference::scalarProjection(cv::Mat A, cv::Mat B){
+  cv::Mat bNorm;
+  cv::normalize(B,bNorm);
+  return A.dot(bNorm);
+}
+
 double GeoReference::distanceBetweenGPS(double lat1, double lon1, double lat2, double lon2)
 {
 	double radius = 6378000; // radius of earth!
@@ -391,6 +443,143 @@ cv::Mat GeoReference::EulerAngles(bool transpose, cv::Mat Orig_Vector, double Ro
 	return Transfer;
 
 
+}
+
+void GeoReference::pixelGeoreference(double plane_latitude_deg,
+                                     double plane_longitude_deg,
+                                     double plane_altitude,
+                                     double plane_roll,
+                                     double plane_pitch,
+                                     double plane_heading,
+                                     double gimbal_roll,
+                                     double gimbal_pitch,
+                                     double target_latitude_deg,
+                                     double target_longitude_deg,
+                                     double horizontal_fov,
+                                     double vertical_fov,
+                                     double x_pixels,
+                                     double y_pixels,
+                                     double& pixel_x,
+                                     double& pixel_y){
+  double plane_latitude = plane_latitude_deg * M_PI / 180.0;
+  double plane_longitude = plane_longitude_deg * M_PI / 180.0;
+  double target_latitude = target_latitude_deg * M_PI / 180.0;
+  double target_longitude = target_longitude_deg * M_PI / 180.0;
+  double x_fov = horizontal_fov * M_PI / 180.0;
+  double y_fov = vertical_fov * M_PI / 180.0;
+  double a = 6378137.0;
+  double b = 6356752.3142;
+
+/* -------------------------- Part A ----------------------------- */
+
+  double N_vec_arr[3] = {1,0,0};
+  double E_vec_arr[3] = {0,1,0};
+  double D_vec_arr[3] = {0,0,1};
+  cv::Mat plane_N_vector = cv::Mat(3, 1, CV_64FC1, N_vec_arr);
+  cv::Mat plane_E_vector = cv::Mat(3, 1, CV_64FC1, E_vec_arr);
+  cv::Mat plane_D_vector = cv::Mat(3, 1, CV_64FC1, D_vec_arr);
+
+  cv::Mat Q_plane_roll = Quaternion(plane_roll, 1, 0, 0);
+  plane_E_vector = Quaternion_Transform(plane_E_vector, Q_plane_roll);
+  plane_D_vector = Quaternion_Transform(plane_D_vector, Q_plane_roll);
+
+  cv::Mat Q_plane_pitch = Quaternion(plane_pitch, 0, 1, 0);
+  plane_D_vector = Quaternion_Transform(plane_D_vector, Q_plane_pitch);
+  plane_N_vector = Quaternion_Transform(plane_N_vector, Q_plane_pitch);
+  plane_E_vector = Quaternion_Transform(plane_E_vector, Q_plane_pitch);
+
+  cv::Mat Q_plane_yaw = Quaternion(plane_heading, 0, 0, 1);
+  plane_D_vector = Quaternion_Transform(plane_D_vector, Q_plane_yaw);
+  plane_N_vector = Quaternion_Transform(plane_N_vector, Q_plane_yaw);
+  plane_E_vector = Quaternion_Transform(plane_E_vector, Q_plane_yaw);
+
+  cv::Mat Camera_Point_Vector = plane_D_vector;
+  cv::Mat Camera_Up_Vector = plane_N_vector;
+
+/* -------------------------- Part B ----------------------------- */
+
+  // set up quaternion and rotate about camera_up_vector, which points forward down the plane
+  cv::Mat Q_gimbal_roll = Quaternion(gimbal_roll,
+                                     Camera_Up_Vector.ptr<double>(0)[0],
+                                     Camera_Up_Vector.ptr<double>(0)[1],
+                                     Camera_Up_Vector.ptr<double>(0)[2]); 
+
+  // rotate through gimbal roll
+  Camera_Point_Vector = Quaternion_Transform(Camera_Point_Vector, Q_gimbal_roll);
+
+  // rotate through gimbal roll
+  Camera_Up_Vector = Quaternion_Transform(Camera_Up_Vector, Q_gimbal_roll);  
+
+  cv::Mat axis = Camera_Point_Vector.cross(Camera_Up_Vector); // set up axis to rotate about
+
+  // build the gimbal pitch quaternion, rotation about camera up
+  double* _axis = axis.ptr<double>(0);
+  cv::Mat Q_gimbal_pitch = Quaternion(gimbal_pitch, _axis[0], _axis[1], _axis[2]);
+
+  // rotate through gimbal pitch  %%HERE IS ERRORRRRRRRRRR!!!!
+  Camera_Point_Vector = Quaternion_Transform(Camera_Point_Vector, Q_gimbal_pitch); 
+
+  // rotate through gimbal pitch
+  Camera_Up_Vector = Quaternion_Transform(Camera_Up_Vector, Q_gimbal_pitch);  
+
+/* -------------------------- Part D ----------------------------- */
+
+  double f=a/(a-b); // Earth flatness
+  double e=sqrt((1/f)*(2-(1/f))); // Earth eccenricity
+
+  /* Length of Normal to the ellipsoid, extending from the surface to the intersection with 
+     the z-axis in ECEF */
+  double N= a / ( sqrt ( 1 -( e * e ) * sin(plane_latitude) * sin(plane_latitude))); 
+
+  double Plane_XYZ_arr[3] = {0,0,0};
+  Plane_XYZ_arr[0] = (N+plane_altitude)*cos(plane_latitude)*cos(plane_longitude);
+  Plane_XYZ_arr[1] = (N+plane_altitude)*cos(plane_latitude)*sin(plane_longitude);
+  Plane_XYZ_arr[2] = (N*(1-e*e)+plane_altitude)*sin(plane_latitude);
+  cv::Mat Plane_XYZ(3, 1, CV_64FC1, Plane_XYZ_arr );
+
+/* -------------------------- Part E ----------------------------- */
+
+  double target_altitude = 0;
+  double Ground_XYZ_arr[3] = {0,0,0};
+  Ground_XYZ_arr[0] = (N+target_altitude)*cos(target_latitude)*cos(target_longitude);
+  Ground_XYZ_arr[1] = (N+target_altitude)*cos(target_latitude)*sin(target_longitude);
+  Ground_XYZ_arr[2] = (N*(1-e*e)+target_altitude)*sin(target_latitude);
+  cv::Mat Ground_XYZ(3, 1, CV_64FC1, Ground_XYZ_arr );
+
+  // points from plane's location to the target location in ECEF
+  cv::Mat Ground_Point_Vector = Ground_XYZ - Plane_XYZ; 
+  Ground_Point_Vector = Ground_Point_Vector/norm(Ground_Point_Vector); // unit vector
+
+/* -------------------------- Part F ----------------------------- */
+
+  cv::Mat CPV_XYZ = NED_to_ECEF(Camera_Point_Vector, plane_latitude, plane_longitude);
+  cv::Mat CUV_XYZ = NED_to_ECEF(Camera_Up_Vector, plane_latitude, plane_longitude);
+
+  cv::Mat Camera_Plane_Origin = Plane_XYZ + CPV_XYZ;
+
+  // set up the input for plane-line intersection
+  cv::Mat P1 = Camera_Plane_Origin;
+  cv::Mat P2 = Camera_Plane_Origin + CUV_XYZ;
+  cv::Mat P3 = Camera_Plane_Origin + CPV_XYZ.cross(CUV_XYZ);
+  cv::Mat P4 = Plane_XYZ;
+  cv::Mat P5 = Plane_XYZ + Ground_Point_Vector;
+
+  // obtain the intersection point
+  cv::Mat E = GeoReference::intersectLinePlane(P1,P2,P3,P4,P5); 
+
+  cv::Mat PE = E - Plane_XYZ;
+  cv::Mat U = CUV_XYZ;
+  cv::Mat Z = Camera_Point_Vector.cross(Camera_Up_Vector);
+
+  // project PE onto U to get the y-component vector
+  double y_component = scalarProjection(PE, U);
+  double x_component = scalarProjection(PE, Z);
+
+  // obtain the pixel locations
+  double tot_y = 2*tan(y_fov/2); // x distance in the viewing box
+  double tot_x = 2*tan(x_fov/2); // y distance in the viewing box
+  pixel_y = (1+2*y_component/tot_y)*y_pixels/2;
+  pixel_x = (1+2*x_component/tot_x)*x_pixels/2;
 }
 
 void GeoReference::reverseGeoreference(double plane_latitude,

@@ -78,5 +78,17 @@ struct GPSExtremes {
 
 };
 
+struct PixelExtremes {
+  double minX;
+  double minY;
+  double maxX;
+  double maxY;
+  PixelExtremes(double minX, double minY, double maxX, double maxY):
+                minX(minX),
+                minY(minY),
+                maxX(maxX),
+                maxY(maxY) {}
+
+};
 
 #endif

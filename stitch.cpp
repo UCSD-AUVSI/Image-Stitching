@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdlib>
 #include <cv.h>
 #include <highgui.h>
 #include <vector>
@@ -20,29 +21,62 @@ using namespace std;
 using namespace cv;
 using namespace cv::detail;
 
-
-
 int main(int argc, char* argv[]){
   
   if ( argc > 2 ){
-    Stitcher stitcher = stitcher.createDefault(true);
-    vector<Mat> images;
-    Mat first = imread(argv[1]);
+    //// ITERATIVE
+      int step = 1, imagesPerStep = 5;
+      Stitcher stitcher = stitcher.createDefault(true);
+      vector<Mat> images, completed;
+
+      for (int i = 1; i < argc; i++){
+        cout << "Adding: "<<argv[i] << endl;
+        Mat image = imread(argv[i]);
+        Mat resized;
+        cv::resize(image,resized,Size(0,0),0.1,0.1);
+        images.push_back(resized);
+      }
+      Mat pano;
+      while(images.size() > 1){
+        for(int i = 1; i < images.size(); i++){
+          vector<Mat> toStitch;
+          toStitch.push_back(images[i]);
+          if (i >= imagesPerStep || i == images.size()-1 ){
+            if (stitcher.stitch(toStitch,pano) == Stitcher::OK){
+              Mat temp;
+              pano.copyTo(temp);
+              completed.push_back(temp);
+            }
+            images = vector<Mat>();
+          }
+        }
+        cout <<"Completed step " << step++ << endl;
+        for (int i = 0; i < completed.size(); i++){
+          char index[10], _step[10];
+          sprintf(index,"%d",i);
+          sprintf(_step,"%d",step);
+          imwrite("image" + string(index) +"_" + string(_step) + ".jpg", completed[i]);
+        }
+        images = completed;
+        completed = vector<Mat>();
+    }
+
+    if ( images.size() == 1){
+      imwrite("pano.jpg",images[0]);
+    }
+    // NON-Iterative
+    /**
     Mat pano;
-    cv::resize(first,pano,Size(0,0),0.2,0.2);
-    for(int i = 1; i < argc; i++){
-      cout << "Adding: "<<argv[i] << endl;
+    vector<Mat> images;
+    for (int i = 1; i < argc; i++){
       Mat image = imread(argv[i]);
       Mat resized;
       cv::resize(image,resized,Size(0,0),0.2,0.2);
       images.push_back(resized);
-      images.push_back(pano);
-      if (stitcher.stitch(images,pano) == Stitcher::OK){
-        images = vector<Mat>();
-        images.push_back(pano);
-      }
     }
-    imwrite("result.jpg",pano);
+    Stitcher stitcher = stitcher.createDefault(true);
+    stitcher.stitch(images,pano);
+    **/
     cout <<"Done!"<<endl;
     getchar();
     return 0;
@@ -57,7 +91,7 @@ int main(int argc, char* argv[]){
     2,                        // rows
     2,                        // columns
     0.4,                      // horizontal overlap,
-    1.0,                      // pixels per meter
+    0.1,                      // pixels per meter
     32.0,                     // minimum latitude
     -117.0);                  // minimum longitude
 
@@ -78,7 +112,7 @@ int main(int argc, char* argv[]){
 
   Stitcher stitcher = stitcher.createDefault(true);
   stitcher.setPanoConfidenceThresh(0.4);
-  stitcher.setFeaturesFinder(multiFinder);
+  stitcher.setFeaturesFinder(gpsFinder);
   stitcher.setFeaturesMatcher(new BestOf2NearestMatcher(true, 0.4f,1,1));
 
   stitcher.stitch(images,pano);

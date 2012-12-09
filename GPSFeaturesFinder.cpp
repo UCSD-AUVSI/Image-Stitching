@@ -56,7 +56,6 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
     for(int _i = 1; _i<= max; _i++){
       for(int _j = 1; _j<= max; _j++){
         LatLon point(minLat+ _i*dLat/(max+1) , minLon+ _j*dLon/(max+1) );
-        cout << point.lat << " " << point.lon <<endl;
         gpsData.push_back(point);
         Pixel pixel = imageWithData.getPixelFor(point);
         KeyPoint keyPoint = pixel.toKeyPoint(scale);
@@ -74,7 +73,8 @@ void GPSFeaturesFinder::operator()(const Mat &image, ImageFeatures &features) {
       for (int j = 2; j < 128; j++){
         Mi[j] = 0;
       }
-      cout <<Mi[0] << " "<<Mi[1] << endl;
+      cout <<"Point: "; printKeyPoint(keyPoints[i]);
+      cout <<"Descriptor: "<<Mi[0] << " "<<Mi[1] << endl <<  endl;
     }
 
     features.img_idx = imageIndex;
