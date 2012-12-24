@@ -9,7 +9,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include "MultiFeaturesFinder.h"
-#include "GPSFeaturesFinder.h"
+#include "GPSStitcher.h"
 #include "gpc.h"
 #include "DataTypes.h"
 #include "camera.h"
@@ -60,9 +60,12 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
     int lonFractionPart = boost::lexical_cast<int>(parts[12]);
     double planeLon = (double)lonWholePart + (double)lonFractionPart / 1000000;
 
-
     double gimbalRoll = 0;
     double gimbalPitch = 0;
+
+    cout << "Plane Latitude :" << planeLat << endl;
+    cout << "Plane Longitude :" << planeLon << endl;
+    cout << "Plane Altitude :" << planeAlt << endl;
 
     dataMap[filename] = ImageWithPlaneData(
         cv::Mat(),
@@ -78,8 +81,11 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
 
   vector<ImageWithPlaneData> imagesWithData;
   for (int i = 0; i < imageFilenames.size(); i++){
-    if (dataMap.count(imageFilenames[i])){
-      ImageWithPlaneData& imageWithData = dataMap[imageFilenames[i]];
+    vector<string> parts;
+    boost::split(parts, imageFilenames[i], boost::is_any_of("/"));
+    string filename = parts[2];
+    if (dataMap.count(filename)){
+      ImageWithPlaneData& imageWithData = dataMap[filename];
       imageWithData.image = cv::imread(imageFilenames[i]);
       imagesWithData.push_back(imageWithData);
     }
@@ -109,24 +115,34 @@ int main(int argc, char* argv[]){
   }
 
   vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeData);
+  vector<CameraParams> cameras;
 
-  cout << "Attempting to stitch " << imagesWithData.size() << " images.\n";
+  for ( auto imageWithData : imagesWithData ){
+    cameras.push_back(imageWithData.getCameraParams());
+  }
+
 
   int step = 0, imagesPerStep = 10;
-  Stitcher stitcher = stitcher.createDefault(true);
-  stitcher.setFeaturesFinder(new SurfFeaturesFinder(1000));
-  stitcher.setExposureCompensator(new NoExposureCompensator());
-  stitcher.setFeaturesMatcher(new BestOf2NearestMatcher(false, 0.2f)); 
+  GPSStitcher stitcher = GPSStitcher();
+  cout << "Created stitcher\n";
+
   vector<Mat> images,completed, toStitch;
   for(int i = 0; i < imagesWithData.size(); i++){
-    images[i] = imagesWithData[i].image;
+    images.push_back(imagesWithData[i].image);
   }
+
   Mat pano;
+  Stitcher normalStitcher = normalStitcher.createDefault(true);
+  stitcher.gpsStitch(images,pano,cameras);
+  imwrite("result.jpg",pano);
+  
+  return 0;
+/*
   while(images.size() > 1){
     for(int i = 1; i < images.size(); i++){
       toStitch.push_back(images[i]);
-      if (i % imagesPerStep == 0 || i == images.size()-1 ){
-        if (stitcher.stitch(toStitch,pano) == Stitcher::OK){
+      if (i % imagesPerStep == 0 || i == images.size()){
+        if (stitcher.gpsStitch(toStitch,pano,cameras) == Stitcher::OK){
           Mat temp;
           pano.copyTo(temp);
           completed.push_back(temp);
@@ -152,22 +168,12 @@ int main(int argc, char* argv[]){
 
   if ( images.size() == 1){
     imwrite("pano.jpg",images[0]);
+    cout << "Stitched pano\n";
+  } else {
+    cout << "Pano could not be stitched!\n";
   }
-  // NON-Iterative
-  /**
-    Mat pano;
-    vector<Mat> images;
-    for (int i = 1; i < argc; i++){
-    Mat image = imread(argv[i]);
-    Mat resized;
-    cv::resize(image,resized,Size(0,0),0.2,0.2);
-    images.push_back(resized);
-    }
-    Stitcher stitcher = stitcher.createDefault(true);
-    stitcher.stitch(images,pano);
-   **/
-  cout <<"Done!"<<endl;
-  getchar();
+
   return 0;
+  */
 }
 

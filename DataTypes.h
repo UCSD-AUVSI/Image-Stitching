@@ -4,6 +4,7 @@
 #include <cv.h>
 #include <ostream>
 #include "gpc.h"
+#include <opencv2/stitching/stitcher.hpp>
 
 struct Pixel {
   int x;
@@ -77,6 +78,8 @@ struct ImageWithPlaneData {
    * Returns the pixel in the image that is closest to the given point
    */
   Pixel getPixelFor(LatLon latlon);
+
+  cv::detail::CameraParams getCameraParams() const;
 };
 
 struct GPSExtremes {

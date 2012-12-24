@@ -4,8 +4,19 @@
 #include "camera.h"
 #include "GeoReference.h"
 #include <iostream>
+#include <cmath>
+
 using namespace Vision;
 using namespace std;
+using namespace cv::detail;
+
+float sinDegrees(float degrees){
+  return sin(2.0f * M_PI * degrees / 360.0);
+}
+
+float cosDegrees(float degrees){
+  return cos(2.0f * M_PI * degrees / 360.0);
+}
 
 cv::Point2f Pixel::toPoint2f(){
   return cv::Point2f(x,y);
@@ -26,6 +37,79 @@ LatLon::LatLon(gpc_vertex vertex){
 cv::Point2i LatLon::toPoint2i(){
   return cv::Point2i(lat * 1000,lon*1000);
 }
+
+cv::detail::CameraParams ImageWithPlaneData::getCameraParams() const {
+  assert(!image.empty());
+  CameraParams cParams;
+  cParams.focal = 3500;
+  cParams.aspect = 1.5;
+  cParams.ppx = image.cols / 2;
+  cParams.ppy = image.rows / 2;
+  
+  cout <<"Prinicipal point x: " << cParams.ppx << endl;
+  cout <<"Prinicipal point y: " << cParams.ppy << endl;
+
+  /**
+   * See http://planning.cs.uiuc.edu/node102.html for information about how the
+   * rotation matrix is constructed
+   */
+
+  float cosR = cosDegrees(roll);
+  float cosP = cosDegrees(pitch);
+  float cosY = cosDegrees(yaw);
+
+  float sinR = sinDegrees(roll);
+  float sinP = sinDegrees(pitch);
+  float sinY = sinDegrees(yaw);
+
+  float rotationMatrix[3][3] = 
+    { 
+      { cosR * cosP, cosR * sinP * sinY - sinR * cosP, cosR * sinP * cosY + sinR * sinY } ,
+      { sinR * cosP, sinR * sinP * sinY + cosR * cosY, sinR * sinP * cosY - cosR * sinY } ,
+      { 0 - sinP, cosP * sinY, cosP * cosY }
+    }; 
+
+  /**
+   * Using `clone()` to copy from rotationMatrix. Otherwise the data will be invalidated
+   * when this stack frame is collapsed
+   */
+  cParams.R = cv::Mat(3,3,CV_32F, rotationMatrix).clone();
+
+  float lat = (float)latitude;
+  float lon = (float)longitude;
+  float alt = (float)altitude / 111200.0f;
+
+  float translationMatrix[3][1] = {lat,lon,alt};
+
+  /**
+   * Using `clone()` to copy from translationMatrix. Otherwise the data will be invalidated
+   * when this stack frame is collapsed
+   */
+  cParams.t = cv::Mat(3,1,CV_32F,translationMatrix).clone();
+
+  cout << "latitude: " << lat << endl;
+  cout << "longitude: " << lon << endl;
+  cout << "altitude: " << alt << endl;
+
+  cout << "Rotation Matrix:\n";
+  for (int i = 0; i < 3; i ++){
+    auto matPtr = cParams.R.ptr<float>(i);
+    cout << "{";
+    for (int j = 0; j < 3; j++){
+      cout << matPtr[j] << ", ";
+    }
+    cout << "}\n";
+  }
+  
+  cout << "Translation Matrix:\n";
+  cout << "{";
+  for (int i = 0; i < 3; i ++){
+    cout << cParams.t.at<float>(i,0) << ", ";
+  }
+  cout <<"}\n";
+  return cParams;
+}
+
 
 GPSExtremes::GPSExtremes(gpc_polygon* polygon){
     if (polygon->num_contours == 0 ){
