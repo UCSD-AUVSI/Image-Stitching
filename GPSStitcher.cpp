@@ -29,16 +29,18 @@ bool GPSStitcher::stitch( InputArray images,
   /**
    * Compose Panorama
    */
-  return composePanorama(vector<Mat>(), pano);
+  return composePanorama(vector<Mat>(), pano, useFeatures);
 }
 
-bool GPSStitcher::composePanorama(InputArray images, OutputArray pano){
+bool GPSStitcher::composePanorama(InputArray images, OutputArray pano, bool bundleAdjust){
   
   /**
    * Bundle Adjustment
    */
-  LOGLN("Performing Bundle Adjustment");
-  // (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
+  if (bundleAdjust) {
+    LOGLN("Performing Bundle Adjustment");
+    (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
+  }
 
   /**
    * Focal calculations
@@ -315,13 +317,13 @@ bool GPSStitcher::prepareAndMatchImages(bool match)
 GPSStitcher::GPSStitcher() {
 
   // Registration Resolution
-  registr_resol_ = 1.0;
+  registr_resol_ = 0.5;
   
   // Seam Estimation Resolution
-  seam_est_resol_ = 1.0;
+  seam_est_resol_ = 0.5;
 
   // Compositing Resolution
-  compose_resol_ = ORIG_RESOL;
+  compose_resol_ = 0.5;
 
   // Pano Confidence Threshold
   conf_thresh_ = 0.4;

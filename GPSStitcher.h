@@ -13,7 +13,7 @@ public:
                  bool useFeatures);
   bool prepareAndMatchImages(bool match);
   GPSStitcher();
-  bool composePanorama(cv::InputArray images, cv::OutputArray pano);
+  bool composePanorama(cv::InputArray images, cv::OutputArray pano, bool bundleAdjust);
 
   double registr_resol_;
   double seam_est_resol_;

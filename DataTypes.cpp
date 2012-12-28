@@ -43,7 +43,7 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   assert(!image.empty());
   CameraParams cParams;
 
-  cParams.focal = 32; //CAMERA_FOCAL_MM * 72.0 / 25.4;
+  cParams.focal = 600; //CAMERA_FOCAL_MM * 72.0 / 25.4;
   cParams.aspect = (double)image.cols / (double)image.rows; // CAMERA_V_FOV / CAMERA_H_FOV;
   cParams.ppx = image.cols / 2;
   cParams.ppy = image.rows / 2;
@@ -87,11 +87,15 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
    */
   cParams.R = cv::Mat(3,3,CV_32F, rotationMatrix).clone();
 
-  float lat = (float)((latitude - minLat) * 111200.0);
-  float lon = (float)((longitude - minLon) * 111200.0);
-  float alt = -0.5f; // (float)altitude;
+  float lat = (float)((latitude - minLat));
+  float lon = (float)((longitude - minLon));
+  float alt = (float)altitude;
 
-  float translationMatrix[3][1] = {lat,lon,alt};
+  float x = lon * cosDegrees(latitude) * 40e6 / 360.0;
+  float y = lat * 40e6 / 360;
+  float z = -6.0;
+  
+  float translationMatrix[3][1] = {x,y,z};
 
   /**
    * Using `clone()` to copy from translationMatrix. Otherwise the data will be invalidated
