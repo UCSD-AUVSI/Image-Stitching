@@ -10,42 +10,16 @@ using namespace std;
 Stitcher::Status GPSStitcher::gpsStitch(InputArray images,
                                         OutputArray pano,
                                         vector<CameraParams> cameras){
+
+  /**
+   * Use these cameras
+   */
   this->cameras_ = cameras;
-  /**
-   * Do focal calculations
-   */
-  vector<double> focals;
-  LOGLN("About to calculate focals");
-  for (size_t i = 0; i < cameras_.size(); ++i)
-  {
-    focals.push_back(cameras_[i].focal);
-  }
-
-  sort(focals.begin(), focals.end());
-  if (focals.size() % 2 == 1)
-    warped_image_scale_ = static_cast<float>(focals[focals.size() / 2]);
-  else
-    warped_image_scale_ = static_cast<float>(focals[focals.size() / 2 - 1] + focals[focals.size() / 2]) * 0.5f;
-
-  /**
-   * Wave Corrections
-   */
-  /**
-  if (do_wave_correct_)
-  {
-    vector<Mat> rmats;
-    for (size_t i = 0; i < cameras_.size(); ++i)
-      rmats.push_back(cameras_[i].R);
-    detail::waveCorrect(rmats, wave_correct_kind_);
-    for (size_t i = 0; i < cameras_.size(); ++i)
-      cameras_[i].R = rmats[i];
-  }
-  **/
-
 
   images.getMatVector(imgs_);
   rois_ = vector<vector<Rect> >();
   Status status;
+
   cout <<"Matching images...\n";
   if ((status = matchImages()) != OK)
     return status;
@@ -58,7 +32,30 @@ Stitcher::Status GPSStitcher::gpsStitch(InputArray images,
 }
 
 Stitcher::Status GPSStitcher::gpsComposePanorama(InputArray images, OutputArray pano){
-  LOGLN("Warping images (auxiliary)... ");
+  
+  /**
+   * Bundle Adjustment
+   */
+  LOGLN("Performing Bundle Adjustment");
+  (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
+
+  /**
+   * Focal calculations
+   */
+  LOGLN("Focal / Scale Calculations");
+  vector<double> focals;
+  for (size_t i = 0; i < cameras_.size(); ++i)
+  {
+    focals.push_back(cameras_[i].focal);
+  }
+
+  sort(focals.begin(), focals.end());
+  if (focals.size() % 2 == 1)
+    warped_image_scale_ = static_cast<float>(focals[focals.size() / 2]);
+  else
+    warped_image_scale_ = static_cast<float>(focals[focals.size() / 2 - 1] + focals[focals.size() / 2]) * 0.5f;
+
+  LOGLN("Warping images... ");
 
   vector<Mat> imgs;
   images.getMatVector(imgs);
@@ -228,16 +225,21 @@ Stitcher::Status GPSStitcher::gpsComposePanorama(InputArray images, OutputArray 
 
 }
 
+
 GPSStitcher::GPSStitcher(): Stitcher() {
-  this->setRegistrationResol(0.6);
-  this->setSeamEstimationResol(0.1);
+  this->setRegistrationResol(1.0);
+  this->setSeamEstimationResol(1.0);
   this->setCompositingResol(ORIG_RESOL);
   this->setPanoConfidenceThresh(0.4);
   this->setWaveCorrection(false);
   this->setFeaturesMatcher(new detail::BestOf2NearestMatcher(false,0.2f));
   this->setFeaturesFinder(new detail::SurfFeaturesFinder(1000));
   this->setWarper(new cv::PlaneWarper());
+  this->setSeamFinder(new detail::NoSeamFinder());
   this->setSeamFinder(new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR));
   this->setExposureCompensator(new detail::NoExposureCompensator());
   this->setBlender(new detail::MultiBandBlender(false));
+  this->setBundleAdjuster(new detail::BundleAdjusterReproj());
+  // this->setBundleAdjuster(new detail::BundleAdjusterRay());
 }
+

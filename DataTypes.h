@@ -79,7 +79,7 @@ struct ImageWithPlaneData {
    */
   Pixel getPixelFor(LatLon latlon);
 
-  cv::detail::CameraParams getCameraParams() const;
+  cv::detail::CameraParams getCameraParams(double minLat, double minLon) const;
 };
 
 struct GPSExtremes {

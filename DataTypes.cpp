@@ -38,11 +38,13 @@ cv::Point2i LatLon::toPoint2i(){
   return cv::Point2i(lat * 1000,lon*1000);
 }
 
-cv::detail::CameraParams ImageWithPlaneData::getCameraParams() const {
+cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
+                                                             double minLon) const {
   assert(!image.empty());
   CameraParams cParams;
-  cParams.focal = 3500;
-  cParams.aspect = 1.5;
+
+  cParams.focal = 32; //CAMERA_FOCAL_MM * 72.0 / 25.4;
+  cParams.aspect = (double)image.cols / (double)image.rows; // CAMERA_V_FOV / CAMERA_H_FOV;
   cParams.ppx = image.cols / 2;
   cParams.ppy = image.rows / 2;
   
@@ -54,13 +56,23 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams() const {
    * rotation matrix is constructed
    */
 
-  float cosR = cosDegrees(roll);
-  float cosP = cosDegrees(pitch);
-  float cosY = cosDegrees(yaw);
+  float cosR = cosDegrees(roll/100);
+  float cosP = cosDegrees(pitch/100);
+  float cosY = cosDegrees(yaw/100);
 
-  float sinR = sinDegrees(roll);
-  float sinP = sinDegrees(pitch);
-  float sinY = sinDegrees(yaw);
+  float sinR = sinDegrees(roll/100);
+  float sinP = sinDegrees(pitch/100);
+  float sinY = sinDegrees(yaw/100);
+
+  /**
+  float cosR = 1;
+  float cosP = 1;
+  float cosY = 1;
+
+  float sinR = 0;
+  float sinP = 0;
+  float sinY = 0;
+  **/
 
   float rotationMatrix[3][3] = 
     { 
@@ -75,9 +87,9 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams() const {
    */
   cParams.R = cv::Mat(3,3,CV_32F, rotationMatrix).clone();
 
-  float lat = (float)latitude;
-  float lon = (float)longitude;
-  float alt = (float)altitude / 111200.0f;
+  float lat = (float)((latitude - minLat) * 111200.0);
+  float lon = (float)((longitude - minLon) * 111200.0);
+  float alt = -0.5f; // (float)altitude;
 
   float translationMatrix[3][1] = {lat,lon,alt};
 

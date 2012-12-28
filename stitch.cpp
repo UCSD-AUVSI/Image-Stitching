@@ -24,11 +24,23 @@ using namespace std;
 using namespace cv;
 using namespace cv::detail;
 
+void plotPositions(vector<CameraParams> cameras, string filename){
+  ofstream outfile(filename);
+  for ( auto camera : cameras ) {
+    outfile << camera.t.at<float>(0,0) << " " << camera.t.at<float>(1,0) << " "
+            << camera.t.at<float>(2,0) << endl;
+  }
+}
+
 vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename){
+
+  cout << "Reading image data file...\n";
+
   ifstream imageData(dataFilename.c_str()); 
   char buffer[1024];
   map<string, ImageWithPlaneData> dataMap;
   vector<string> parts;
+
   while (true){
     imageData.getline(buffer,1024);
     if (!buffer)
@@ -36,7 +48,7 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
 
     boost::split(parts, buffer, boost::is_any_of(" \r"));
 
-    if ( parts.size() == 1){
+    if ( parts.size() < 12){
       break;
     }
 
@@ -46,9 +58,9 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
      * For each of the parts below, the first character of the segment is 
      * removed. This character is the 'R', 'P', 'Y', or 'A' indicator
      */
-    double planeRoll = boost::lexical_cast<int>(parts[1].substr(1)) / 100.0; 
-    double planePitch = boost::lexical_cast<int>(parts[2].substr(1)) / 100.0;
-    double planeYaw = boost::lexical_cast<int>(parts[3].substr(1)) / 100.0;
+    double planeRoll = boost::lexical_cast<int>(parts[1].substr(1)) / 1000.0; 
+    double planePitch = boost::lexical_cast<int>(parts[2].substr(1)) / 1000.0;
+    double planeYaw = boost::lexical_cast<int>(parts[3].substr(1)) / 1000.0;
     double planeAlt = boost::lexical_cast<int>(parts[4].substr(1)) / 100.0;
 
 
@@ -63,10 +75,6 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
     double gimbalRoll = 0;
     double gimbalPitch = 0;
 
-    cout << "Plane Latitude :" << planeLat << endl;
-    cout << "Plane Longitude :" << planeLon << endl;
-    cout << "Plane Altitude :" << planeAlt << endl;
-
     dataMap[filename] = ImageWithPlaneData(
         cv::Mat(),
         planeLat,
@@ -79,15 +87,21 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
         gimbalPitch);
   }
 
-  vector<ImageWithPlaneData> imagesWithData;
+  cout << dataMap.size() << " entries loaded.\n";
+
+  vector<ImageWithPlaneData> imagesWithData(imageFilenames.size());
   for (int i = 0; i < imageFilenames.size(); i++){
     vector<string> parts;
     boost::split(parts, imageFilenames[i], boost::is_any_of("/"));
-    string filename = parts[2];
+    string filename = parts.back();
     if (dataMap.count(filename)){
       ImageWithPlaneData& imageWithData = dataMap[filename];
+      cout << "Loading " << filename << "...";
       imageWithData.image = cv::imread(imageFilenames[i]);
-      imagesWithData.push_back(imageWithData);
+      cout << "Done\n";
+      imagesWithData[i] = imageWithData;
+    } else {
+      cout << "WARNING: Data for " << filename << "does not exist.\n";
     }
   }
 
@@ -104,76 +118,56 @@ int main(int argc, char* argv[]){
   /**
    * The first argument passed to Image-Stitcher should be the file with the plane data
    */
-  string planeData(argv[1]);
+  string planeDataFilename(argv[1]);
 
   /**
    * Get the filenames for the rest of the images
    */
-  vector<string> imageFilenames;
-  for (int i = 2; i < argc; i++){
-    imageFilenames.push_back(argv[i]);
+  int numImages = argc - 2;
+
+  cout << "Preparing to stitch " << numImages << " images.\n";
+  vector<string> imageFilenames(numImages);
+
+  /**
+   * Copy the image filenames into a vector
+   */
+  copy(argv+2,argv+2+numImages,imageFilenames.begin());
+
+  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename);
+  cout << "Images Loaded\n";
+
+  double minLat = DBL_MAX;
+  double minLon = DBL_MAX;
+  for (auto imageWithData: imagesWithData) {
+    minLat = min(minLat,imageWithData.latitude);
+    minLon = min(minLon,imageWithData.longitude);
   }
 
-  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeData);
-  vector<CameraParams> cameras;
+  vector<CameraParams> cameras(numImages);
 
-  for ( auto imageWithData : imagesWithData ){
-    cameras.push_back(imageWithData.getCameraParams());
+  for (int i = 0; i < numImages; i++ ){
+    cameras[i] = imagesWithData[i].getCameraParams(minLat,minLon);
   }
 
+  plotPositions(cameras,"positions");
 
-  int step = 0, imagesPerStep = 10;
-  GPSStitcher stitcher = GPSStitcher();
-  cout << "Created stitcher\n";
-
-  vector<Mat> images,completed, toStitch;
-  for(int i = 0; i < imagesWithData.size(); i++){
-    images.push_back(imagesWithData[i].image);
+  vector<Mat> images(numImages);
+  for(int i = 0; i < numImages; i++){
+    images[i] = imagesWithData[i].image;
   }
 
   Mat pano;
-  Stitcher normalStitcher = normalStitcher.createDefault(true);
+
+  GPSStitcher stitcher = GPSStitcher();
+
+  cout << "Beginning Stitch...\n";
   stitcher.gpsStitch(images,pano,cameras);
+  cout << "Stitch Completed\n";
+
+  cout << "Saving result.jpg\n";
   imwrite("result.jpg",pano);
+  cout << "File saved.\n";
   
   return 0;
-/*
-  while(images.size() > 1){
-    for(int i = 1; i < images.size(); i++){
-      toStitch.push_back(images[i]);
-      if (i % imagesPerStep == 0 || i == images.size()){
-        if (stitcher.gpsStitch(toStitch,pano,cameras) == Stitcher::OK){
-          Mat temp;
-          pano.copyTo(temp);
-          completed.push_back(temp);
-        } else {
-          for (int i = 0; i < toStitch.size(); i++){
-            completed.push_back(toStitch[i]);
-          }
-          cerr << "STITCHING FAILED!";
-        }
-        toStitch = vector<Mat>();
-      }
-    }
-    cout <<"Completed step " << step++ << endl;
-    for (int i = 0; i < completed.size(); i++){
-      char index[10], _step[10];
-      sprintf(index,"%d",i);
-      sprintf(_step,"%d",step);
-      imwrite("image" + string(index) +"_" + string(_step) + ".jpg", completed[i]);
-    }
-    images = completed;
-    completed = vector<Mat>();
-  }
-
-  if ( images.size() == 1){
-    imwrite("pano.jpg",images[0]);
-    cout << "Stitched pano\n";
-  } else {
-    cout << "Pano could not be stitched!\n";
-  }
-
-  return 0;
-  */
 }
 
