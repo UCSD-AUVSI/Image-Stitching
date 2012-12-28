@@ -7,37 +7,38 @@ using namespace cv;
 using namespace cv::detail;
 using namespace std;
 
-Stitcher::Status GPSStitcher::gpsStitch(InputArray images,
-                                        OutputArray pano,
-                                        vector<CameraParams> cameras){
-
+bool GPSStitcher::stitch( InputArray images,
+                                      OutputArray pano,
+                                      vector<CameraParams> cameras,
+                                      bool useFeatures){
   /**
    * Use these cameras
    */
   this->cameras_ = cameras;
 
   images.getMatVector(imgs_);
-  rois_ = vector<vector<Rect> >();
-  Status status;
 
   cout <<"Matching images...\n";
-  if ((status = matchImages()) != OK)
-    return status;
+  
+  if (!prepareAndMatchImages(useFeatures)){
+    return false;
+  }
+
   cout <<"Images matched successfully.\n";
 
   /**
    * Compose Panorama
    */
-  return gpsComposePanorama(vector<Mat>(), pano);
+  return composePanorama(vector<Mat>(), pano);
 }
 
-Stitcher::Status GPSStitcher::gpsComposePanorama(InputArray images, OutputArray pano){
+bool GPSStitcher::composePanorama(InputArray images, OutputArray pano){
   
   /**
    * Bundle Adjustment
    */
   LOGLN("Performing Bundle Adjustment");
-  (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
+  // (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
 
   /**
    * Focal calculations
@@ -129,7 +130,7 @@ Stitcher::Status GPSStitcher::gpsComposePanorama(InputArray images, OutputArray 
   Mat full_img, img;
   for (size_t img_idx = 0; img_idx < imgs_.size(); ++img_idx)
   {
-    LOGLN("Compositing image #" << indices_[img_idx] + 1);
+    LOGLN("Compositing image #" << img_idx + 1);
 
     // Read image and resize it if necessary
     full_img = imgs_[img_idx];
@@ -221,25 +222,134 @@ Stitcher::Status GPSStitcher::gpsComposePanorama(InputArray images, OutputArray 
   // so convert it to avoid user confusing
   result.convertTo(pano_, CV_8U);
 
-  return OK;
+  return true;
 
 }
 
+bool GPSStitcher::prepareAndMatchImages(bool match)
+{
+    if ((int)imgs_.size() < 2)
+    {
+        LOGLN("Need more images");
+        return false;
+    }
 
-GPSStitcher::GPSStitcher(): Stitcher() {
-  this->setRegistrationResol(1.0);
-  this->setSeamEstimationResol(1.0);
-  this->setCompositingResol(ORIG_RESOL);
-  this->setPanoConfidenceThresh(0.4);
-  this->setWaveCorrection(false);
-  this->setFeaturesMatcher(new detail::BestOf2NearestMatcher(false,0.2f));
-  this->setFeaturesFinder(new detail::SurfFeaturesFinder(1000));
-  this->setWarper(new cv::PlaneWarper());
-  this->setSeamFinder(new detail::NoSeamFinder());
-  this->setSeamFinder(new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR));
-  this->setExposureCompensator(new detail::NoExposureCompensator());
-  this->setBlender(new detail::MultiBandBlender(false));
-  this->setBundleAdjuster(new detail::BundleAdjusterReproj());
-  // this->setBundleAdjuster(new detail::BundleAdjusterRay());
+    work_scale_ = 1;
+    seam_work_aspect_ = 1;
+    seam_scale_ = 1;
+    bool is_work_scale_set = false;
+    bool is_seam_scale_set = false;
+    Mat full_img, img;
+    features_.resize(imgs_.size());
+    seam_est_imgs_.resize(imgs_.size());
+    full_img_sizes_.resize(imgs_.size());
+
+    LOGLN("Finding features...");
+#if ENABLE_LOG
+    int64 t = getTickCount();
+#endif
+
+    for (size_t i = 0; i < imgs_.size(); ++i)
+    {
+        full_img = imgs_[i];
+        full_img_sizes_[i] = full_img.size();
+
+        if (registr_resol_ < 0)
+        {
+            img = full_img;
+            work_scale_ = 1;
+            is_work_scale_set = true;
+        }
+        else
+        {
+            if (!is_work_scale_set)
+            {
+                work_scale_ = min(1.0, sqrt(registr_resol_ * 1e6 / full_img.size().area()));
+                is_work_scale_set = true;
+            }
+            resize(full_img, img, Size(), work_scale_, work_scale_);
+        }
+        if (!is_seam_scale_set)
+        {
+            seam_scale_ = min(1.0, sqrt(seam_est_resol_ * 1e6 / full_img.size().area()));
+            seam_work_aspect_ = seam_scale_ / work_scale_;
+            is_seam_scale_set = true;
+        }
+
+        if (match){
+            (*features_finder_)(img, features_[i]);
+            features_[i].img_idx = (int)i;
+            LOGLN("Features in image #" << i+1 << ": " << features_[i].keypoints.size());
+        }
+
+        resize(full_img, img, Size(), seam_scale_, seam_scale_);
+        seam_est_imgs_[i] = img.clone();
+    }
+
+    // Do it to save memory
+    features_finder_->collectGarbage();
+    full_img.release();
+    img.release();
+
+    LOGLN("Finding features, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
+
+    LOG("Pairwise matching");
+#if ENABLE_LOG
+    t = getTickCount();
+#endif
+    if (match){
+      (*features_matcher_)(features_, pairwise_matches_, matching_mask_);
+    }
+    features_matcher_->collectGarbage();
+    LOGLN("Pairwise matching, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
+
+    if ((int)imgs_.size() < 2)
+    {
+        LOGLN("Need more images");
+        return false;
+    }
+
+    return true;
+}
+
+GPSStitcher::GPSStitcher() {
+
+  // Registration Resolution
+  registr_resol_ = 1.0;
+  
+  // Seam Estimation Resolution
+  seam_est_resol_ = 1.0;
+
+  // Compositing Resolution
+  compose_resol_ = ORIG_RESOL;
+
+  // Pano Confidence Threshold
+  conf_thresh_ = 0.4;
+  
+  // Do wave correction
+  do_wave_correct_ = false;
+
+  // Set features matcher
+  features_matcher_ = new detail::BestOf2NearestMatcher(false,0.2f);
+
+  // Set features finder
+  features_finder_ = new detail::SurfFeaturesFinder(1000);
+
+  // Set warper
+  warper_ = new cv::PlaneWarper();
+
+  // Set seam finder
+  seam_finder_ = new detail::NoSeamFinder();
+  // this->setSeamFinder(new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR));
+
+  // Exposure Compensator
+  exposure_comp_ = new detail::NoExposureCompensator();
+
+  // Blender
+  blender_ = new detail::MultiBandBlender(false);
+
+  // Bundle Adjuster 
+  bundle_adjuster_ = new detail::BundleAdjusterReproj();
+  //this->setBundleAdjuster(new detail::BundleAdjusterRay());
 }
 

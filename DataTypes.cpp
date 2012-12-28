@@ -56,6 +56,7 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
    * rotation matrix is constructed
    */
 
+  /**
   float cosR = cosDegrees(roll/100);
   float cosP = cosDegrees(pitch/100);
   float cosY = cosDegrees(yaw/100);
@@ -63,8 +64,8 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   float sinR = sinDegrees(roll/100);
   float sinP = sinDegrees(pitch/100);
   float sinY = sinDegrees(yaw/100);
+  */
 
-  /**
   float cosR = 1;
   float cosP = 1;
   float cosY = 1;
@@ -72,7 +73,6 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   float sinR = 0;
   float sinP = 0;
   float sinY = 0;
-  **/
 
   float rotationMatrix[3][3] = 
     { 

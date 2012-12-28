@@ -161,7 +161,7 @@ int main(int argc, char* argv[]){
   GPSStitcher stitcher = GPSStitcher();
 
   cout << "Beginning Stitch...\n";
-  stitcher.gpsStitch(images,pano,cameras);
+  stitcher.stitch(images,pano,cameras,false);
   cout << "Stitch Completed\n";
 
   cout << "Saving result.jpg\n";
