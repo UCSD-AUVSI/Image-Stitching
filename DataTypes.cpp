@@ -43,7 +43,7 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   assert(!image.empty());
   CameraParams cParams;
 
-  cParams.focal = 600; //CAMERA_FOCAL_MM * 72.0 / 25.4;
+  cParams.focal = 500; //CAMERA_FOCAL_MM * 72.0 / 25.4;
   cParams.aspect = (double)image.cols / (double)image.rows; // CAMERA_V_FOV / CAMERA_H_FOV;
   cParams.ppx = image.cols / 2;
   cParams.ppy = image.rows / 2;
@@ -94,7 +94,7 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
 
   float x = lon * cosDegrees(latitude) * 40e6 / 360.0;
   float y = lat * 40e6 / 360;
-  float z = alt * -5.0;
+  float z = alt * -6.0;
   
   float translationMatrix[3][1] = {x,y,z};
 
@@ -103,10 +103,6 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
    * when this stack frame is collapsed
    */
   cParams.t = cv::Mat(3,1,CV_32F,translationMatrix).clone();
-
-  cout << "latitude: " << lat << endl;
-  cout << "longitude: " << lon << endl;
-  cout << "altitude: " << alt << endl;
 
   cout << "Rotation Matrix:\n";
   for (int i = 0; i < 3; i ++){
