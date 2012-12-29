@@ -320,7 +320,7 @@ GPSStitcher::GPSStitcher() {
   registr_resol_ = 0.5;
   
   // Seam Estimation Resolution
-  seam_est_resol_ = 0.5;
+  seam_est_resol_ = 0.01;
 
   // Compositing Resolution
   compose_resol_ = 0.5;
@@ -341,8 +341,7 @@ GPSStitcher::GPSStitcher() {
   warper_ = new cv::PlaneWarper();
 
   // Set seam finder
-  seam_finder_ = new detail::NoSeamFinder();
-  // this->setSeamFinder(new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR));
+  seam_finder_ = new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR);
 
   // Exposure Compensator
   exposure_comp_ = new detail::NoExposureCompensator();
