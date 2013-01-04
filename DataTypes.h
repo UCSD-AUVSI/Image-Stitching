@@ -5,6 +5,29 @@
 #include <ostream>
 #include "gpc.h"
 #include <opencv2/stitching/stitcher.hpp>
+#include <opencv2/stitching/warpers.hpp>
+
+struct GPSStitcherArgs{
+  double registrationResolution = 0.5;
+  double seamEstimationResolution = 0.01;
+  double compositingResolution = 0.5;
+  double confidenceThreshold = 0.4;
+  bool doWaveCorrect = false;
+  bool useFeatures = true;
+  cv::detail::FeaturesMatcher* featuresMatcher = new cv::detail::BestOf2NearestMatcher(false,0.2f);
+  cv::detail::FeaturesFinder* featuresFinder = new cv::detail::SurfFeaturesFinder(1000);
+  cv::WarperCreator* warperCreator = new cv::PlaneWarper();
+
+  cv::detail::SeamFinder* seamFinder =
+    new cv::detail::GraphCutSeamFinder(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
+
+  cv::detail::ExposureCompensator* exposureCompensator = 
+    cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+
+  cv::detail::Blender* blender = new cv::detail::FeatherBlender(false);
+
+  cv::detail::BundleAdjusterBase* bundleAdjuster = new cv::detail::BundleAdjusterReproj();
+};
 
 struct Pixel {
   int x;

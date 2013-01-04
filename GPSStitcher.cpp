@@ -2,6 +2,7 @@
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/warpers.hpp>
 #include "GPSStitcher.h"
+#include <opencv2/stitching/detail/exposure_compensate.hpp>
 
 using namespace cv;
 using namespace cv::detail;
@@ -82,7 +83,7 @@ bool GPSStitcher::composePanorama(InputArray images, OutputArray pano, bool bund
   }
 
   // Warp images and their masks
-  Ptr<detail::PlaneWarper> w(new detail::PlaneWarper(float(warped_image_scale_ * seam_work_aspect_)));
+  Ptr<detail::PlaneWarper> w = warper_->create(float(warped_image_scale_ * seam_work_aspect_));
   for (size_t i = 0; i < imgs_.size(); ++i)
   {
     Mat_<float> K;
@@ -314,43 +315,18 @@ bool GPSStitcher::prepareAndMatchImages(bool match)
     return true;
 }
 
-GPSStitcher::GPSStitcher() {
-
-  // Registration Resolution
-  registr_resol_ = 0.5;
-  
-  // Seam Estimation Resolution
-  seam_est_resol_ = 0.01;
-
-  // Compositing Resolution
-  compose_resol_ = 0.5;
-
-  // Pano Confidence Threshold
-  conf_thresh_ = 0.4;
-  
-  // Do wave correction
-  do_wave_correct_ = false;
-
-  // Set features matcher
-  features_matcher_ = new detail::BestOf2NearestMatcher(false,0.2f);
-
-  // Set features finder
-  features_finder_ = new detail::SurfFeaturesFinder(1000);
-
-  // Set warper
-  warper_ = new cv::PlaneWarper();
-
-  // Set seam finder
-  seam_finder_ = new detail::GraphCutSeamFinder(detail::GraphCutSeamFinderBase::COST_COLOR);
-
-  // Exposure Compensator
-  exposure_comp_ = new detail::NoExposureCompensator();
-
-  // Blender
-  blender_ = new detail::MultiBandBlender(false);
-
-  // Bundle Adjuster 
-  bundle_adjuster_ = new detail::BundleAdjusterReproj();
-  //this->setBundleAdjuster(new detail::BundleAdjusterRay());
+GPSStitcher::GPSStitcher(GPSStitcherArgs arguments) {
+  registr_resol_ = arguments.registrationResolution;
+  seam_est_resol_ = arguments.seamEstimationResolution;
+  compose_resol_ = arguments.compositingResolution;
+  conf_thresh_ = arguments.confidenceThreshold;
+  do_wave_correct_ = arguments.doWaveCorrect;
+  features_matcher_ = arguments.featuresMatcher;
+  features_finder_ = arguments.featuresFinder;
+  warper_ = arguments.warperCreator;
+  seam_finder_ = arguments.seamFinder;
+  exposure_comp_ = arguments.exposureCompensator;
+  blender_ = arguments.blender;
+  bundle_adjuster_ = arguments.bundleAdjuster;
 }
 

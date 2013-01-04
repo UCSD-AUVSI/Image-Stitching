@@ -108,6 +108,35 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
   return imagesWithData;
 }
 
+void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<string>& imageFilenames){
+  for (int i = 2; i < argc; i++){
+    string token(argv[i]);
+    if ( token == "--reg_resol"){
+      arguments.registrationResolution = boost::lexical_cast<double>(argv[i++]);
+    } else if ( token == "--seam_est_resol"){
+      arguments.seamEstimationResolution = boost::lexical_cast<double>(argv[i++]);
+    } else if ( token == "--compose_resol"){
+      arguments.compositingResolution = boost::lexical_cast<double>(argv[i++]);
+    } else if ( token == "--conf_thresh"){
+      arguments.confidenceThreshold = boost::lexical_cast<double>(argv[i++]);
+    } else if ( token == "--wave-correct"){
+      arguments.doWaveCorrect = true;
+    } else if ( token == "--no-wave-correct"){
+      arguments.doWaveCorrect = false;
+    } else if ( token == "--no-features"){
+      arguments.useFeatures = false;
+    } else if ( token == "--no-seam-finder"){
+      arguments.seamFinder = new detail::NoSeamFinder();
+    } else if ( token == "--no-exposure-compensator"){
+      arguments.exposureCompensator = new detail::NoExposureCompensator();
+    } else if ( token == "--bundle-adjuster-ray"){
+      arguments.bundleAdjuster == new detail::BundleAdjusterRay();
+    } else {
+      imageFilenames.push_back(token);
+    }
+  }
+}
+
 int main(int argc, char* argv[]){
 
   if (argc < 2){
@@ -120,18 +149,18 @@ int main(int argc, char* argv[]){
    */
   string planeDataFilename(argv[1]);
 
+  GPSStitcherArgs gpsArgs;
+  vector<string> imageFilenames;
+
+
   /**
-   * Get the filenames for the rest of the images
+   * Get the command-line parameters
    */
-  int numImages = argc - 2;
+  parseArguments(argc,argv,gpsArgs,imageFilenames);
+
+  int numImages = imageFilenames.size();
 
   cout << "Preparing to stitch " << numImages << " images.\n";
-  vector<string> imageFilenames(numImages);
-
-  /**
-   * Copy the image filenames into a vector
-   */
-  copy(argv+2,argv+2+numImages,imageFilenames.begin());
 
   vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename);
   cout << "Images Loaded\n";
@@ -157,11 +186,10 @@ int main(int argc, char* argv[]){
   }
 
   Mat pano;
-
-  GPSStitcher stitcher = GPSStitcher();
+  GPSStitcher stitcher = GPSStitcher(gpsArgs);
 
   cout << "Beginning Stitch...\n";
-  stitcher.stitch(images,pano,cameras,false);
+  stitcher.stitch(images,pano,cameras,gpsArgs.useFeatures);
   cout << "Stitch Completed\n";
 
   cout << "Saving result.jpg\n";

@@ -3,6 +3,7 @@
 
 #include <cv.h>
 #include <opencv2/stitching/stitcher.hpp>
+#include "Datatypes.h"
 
 class GPSStitcher {
 public:
@@ -12,7 +13,7 @@ public:
                  std::vector<cv::detail::CameraParams> cameras,
                  bool useFeatures);
   bool prepareAndMatchImages(bool match);
-  GPSStitcher();
+  GPSStitcher(GPSStitcherArgs args);
   bool composePanorama(cv::InputArray images, cv::OutputArray pano, bool bundleAdjust);
 
   double registr_resol_;

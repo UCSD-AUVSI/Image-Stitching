@@ -65,16 +65,6 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   float sinY = sinDegrees(yaw);
 
 
-  /**
-    float cosR = 1;
-    float cosP = 1;
-    float cosY = 1;
-
-    float sinR = 0;
-    float sinP = 0;
-    float sinY = 0;
-  **/
-
   float rotationMatrix[3][3] = 
     { 
       { cosR * cosP, cosR * sinP * sinY - sinR * cosP, cosR * sinP * cosY + sinR * sinY } ,
