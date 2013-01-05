@@ -48,8 +48,10 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   cParams.ppx = image.cols / 2;
   cParams.ppy = image.rows / 2;
   
-  cout <<"Prinicipal point x: " << cParams.ppx << endl;
-  cout <<"Prinicipal point y: " << cParams.ppy << endl;
+  /**
+    cout <<"Principal point x: " << cParams.ppx << endl;
+    cout <<"Principal point y: " << cParams.ppy << endl;
+  */
 
   /**
    * See http://planning.cs.uiuc.edu/node102.html for information about how the
@@ -94,22 +96,24 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
    */
   cParams.t = cv::Mat(3,1,CV_32F,translationMatrix).clone();
 
-  cout << "Rotation Matrix:\n";
-  for (int i = 0; i < 3; i ++){
-    auto matPtr = cParams.R.ptr<float>(i);
-    cout << "{";
-    for (int j = 0; j < 3; j++){
-      cout << matPtr[j] << ", ";
+  /**
+    cout << "Rotation Matrix:\n";
+    for (int i = 0; i < 3; i ++){
+      auto matPtr = cParams.R.ptr<float>(i);
+      cout << "{";
+      for (int j = 0; j < 3; j++){
+        cout << matPtr[j] << ", ";
+      }
+      cout << "}\n";
     }
-    cout << "}\n";
-  }
-  
-  cout << "Translation Matrix:\n";
-  cout << "{";
-  for (int i = 0; i < 3; i ++){
-    cout << cParams.t.at<float>(i,0) << ", ";
-  }
-  cout <<"}\n";
+    
+    cout << "Translation Matrix:\n";
+    cout << "{";
+    for (int i = 0; i < 3; i ++){
+      cout << cParams.t.at<float>(i,0) << ", ";
+    }
+    cout <<"}\n";
+  */
   return cParams;
 }
 

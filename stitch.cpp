@@ -8,7 +8,7 @@
 #include <opencv2/stitching/detail/matchers.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
-#include "MultiFeaturesFinder.h"
+#include "AdjacentFeaturesMatcher.h"
 #include "GPSStitcher.h"
 #include "gpc.h"
 #include "DataTypes.h"
@@ -87,7 +87,7 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
         gimbalPitch);
   }
 
-  cout << dataMap.size() << " entries loaded.\n";
+  cout << dataMap.size() << " entries loaded.\n\n";
 
   vector<ImageWithPlaneData> imagesWithData(imageFilenames.size());
   for (int i = 0; i < imageFilenames.size(); i++){
@@ -106,6 +106,23 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
   }
 
   return imagesWithData;
+}
+
+void printUsage(char* executableName){
+  cout << "\nUsage: " << executableName << " planeDataFile [options] image1 [image2 ...]\n";
+  cout << "\nOptions:\n"
+           " --reg_resol resolution         Set registration resolution\n" 
+           " --seam_est_resol resolution    Set seam estimation resolution\n"
+           " --compose_resol resolution     Set composition resolution\n"
+           " --conf_thresh threshold        Set confidence threshold\n"
+           " --wave-correct                 Enable wave correction\n"
+           " --no-wave-correct              Disable wave correction(default)\n"
+           " --no-features                  Do not do feature matching or detection\n"
+           " --no-seam-finder               Do not do seam finding\n"
+           " --no-exposure-compensator      Do not do exposure compensation\n"
+           " --bundle-adjuster-ray          Use the ray bundle adjuster\n"
+           " --no-bundle-adjust             Do not do bundle adjustment\n";
+           " --2nearest                     Use the bestOf2NearestMatcher\n";
 }
 
 void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<string>& imageFilenames){
@@ -131,6 +148,8 @@ void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<s
       arguments.exposureCompensator = new detail::NoExposureCompensator();
     } else if ( token == "--bundle-adjuster-ray"){
       arguments.bundleAdjuster == new detail::BundleAdjusterRay();
+    } else if ( token == "--no-bundle-adjust"){
+      arguments.doBundleAdjust = false;
     } else {
       imageFilenames.push_back(token);
     }
@@ -140,7 +159,7 @@ void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<s
 int main(int argc, char* argv[]){
 
   if (argc < 2){
-    cout << "Usage: " << argv[0] << " planeDataFile image1 [image2 ...]\n";
+    printUsage(argv[0]);
     return 0;
   }
 
@@ -163,7 +182,7 @@ int main(int argc, char* argv[]){
   cout << "Preparing to stitch " << numImages << " images.\n";
 
   vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename);
-  cout << "Images Loaded\n";
+  cout << "Images Loaded\n\n";
 
   double minLat = DBL_MAX;
   double minLon = DBL_MAX;

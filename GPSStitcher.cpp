@@ -38,7 +38,7 @@ bool GPSStitcher::composePanorama(InputArray images, OutputArray pano, bool bund
   /**
    * Bundle Adjustment
    */
-  if (bundleAdjust) {
+  if (bundleAdjust && doBundleAdjust) {
     LOGLN("Performing Bundle Adjustment");
     (*bundle_adjuster_)(features_, pairwise_matches_, cameras_);
   }
@@ -83,7 +83,8 @@ bool GPSStitcher::composePanorama(InputArray images, OutputArray pano, bool bund
   }
 
   // Warp images and their masks
-  Ptr<detail::PlaneWarper> w = warper_->create(float(warped_image_scale_ * seam_work_aspect_));
+  Ptr<detail::PlaneWarper> w(new detail::PlaneWarper(float(warped_image_scale_ * seam_work_aspect_)));
+
   for (size_t i = 0; i < imgs_.size(); ++i)
   {
     Mat_<float> K;
@@ -296,7 +297,7 @@ bool GPSStitcher::prepareAndMatchImages(bool match)
 
     LOGLN("Finding features, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
 
-    LOG("Pairwise matching");
+    LOGLN("Pairwise matching");
 #if ENABLE_LOG
     t = getTickCount();
 #endif
@@ -328,5 +329,18 @@ GPSStitcher::GPSStitcher(GPSStitcherArgs arguments) {
   exposure_comp_ = arguments.exposureCompensator;
   blender_ = arguments.blender;
   bundle_adjuster_ = arguments.bundleAdjuster;
+  doBundleAdjust = arguments.doBundleAdjust;
+
+  cout << "GPSStitcher Initialized\n"
+       << " Registration resolution: " << registr_resol_ << endl
+       << " Seam Estimation resolution: " << seam_est_resol_ << endl
+       << " Confidence Threshhold: " << conf_thresh_ << endl;
+  if ( do_wave_correct_) {
+    cout << " Performing Wave Correction.\n";
+  } else {
+    cout << " Not performing wave correction\n";
+  }
+
+  cout << endl;
 }
 

@@ -25,6 +25,7 @@ public:
   cv::Mat matching_mask_;
   cv::Ptr<cv::detail::BundleAdjusterBase> bundle_adjuster_;
   bool do_wave_correct_;
+  bool doBundleAdjust;
   cv::detail::WaveCorrectKind wave_correct_kind_;
   cv::Ptr<cv::WarperCreator> warper_;
   cv::Ptr<cv::detail::ExposureCompensator> exposure_comp_;

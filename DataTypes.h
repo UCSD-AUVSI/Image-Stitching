@@ -4,17 +4,22 @@
 #include <cv.h>
 #include <ostream>
 #include "gpc.h"
+#include "AdjacentFeaturesMatcher.h"
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/warpers.hpp>
 
 struct GPSStitcherArgs{
+
   double registrationResolution = 0.5;
   double seamEstimationResolution = 0.01;
   double compositingResolution = 0.5;
   double confidenceThreshold = 0.4;
+
   bool doWaveCorrect = false;
+  bool doBundleAdjust = true;
   bool useFeatures = true;
-  cv::detail::FeaturesMatcher* featuresMatcher = new cv::detail::BestOf2NearestMatcher(false,0.2f);
+
+  cv::detail::FeaturesMatcher* featuresMatcher = new AdjacentFeaturesMatcher();
   cv::detail::FeaturesFinder* featuresFinder = new cv::detail::SurfFeaturesFinder(1000);
   cv::WarperCreator* warperCreator = new cv::PlaneWarper();
 
