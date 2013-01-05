@@ -332,13 +332,20 @@ GPSStitcher::GPSStitcher(GPSStitcherArgs arguments) {
   doBundleAdjust = arguments.doBundleAdjust;
 
   cout << "GPSStitcher Initialized\n"
-       << " Registration resolution: " << registr_resol_ << endl
+       << " Registration resolution:    " << registr_resol_ << endl
        << " Seam Estimation resolution: " << seam_est_resol_ << endl
-       << " Confidence Threshhold: " << conf_thresh_ << endl;
+       << " Composition resolution:     " << compose_resol_ << endl
+       << " Confidence Threshhold:      " << conf_thresh_ << endl;
   if ( do_wave_correct_) {
     cout << " Performing Wave Correction.\n";
   } else {
-    cout << " Not performing wave correction\n";
+    cout << " Not Performing Wave Correction.\n";
+  }
+
+  if ( doBundleAdjust){
+    cout << " Performing Bundle Adjustment.\n";
+  } else { 
+    cout << " Not Performing Bundle Adjustment.\n";
   }
 
   cout << endl;
