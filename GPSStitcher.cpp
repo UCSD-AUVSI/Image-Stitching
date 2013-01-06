@@ -317,13 +317,13 @@ bool GPSStitcher::prepareAndMatchImages(bool match)
 }
 
 GPSStitcher::GPSStitcher(GPSStitcherArgs arguments) {
-  registr_resol_ = arguments.registrationResolution;
+  registr_resol_  = arguments.registrationResolution;
   seam_est_resol_ = arguments.seamEstimationResolution;
-  compose_resol_ = arguments.compositingResolution;
-  conf_thresh_ = arguments.confidenceThreshold;
-  do_wave_correct_ = arguments.doWaveCorrect;
+  compose_resol_  = arguments.compositingResolution;
+  conf_thresh_    = arguments.confidenceThreshold;
+  do_wave_correct_  = arguments.doWaveCorrect;
   features_matcher_ = arguments.featuresMatcher;
-  features_finder_ = arguments.featuresFinder;
+  features_finder_  = arguments.featuresFinder;
   warper_ = arguments.warperCreator;
   seam_finder_ = arguments.seamFinder;
   exposure_comp_ = arguments.exposureCompensator;
