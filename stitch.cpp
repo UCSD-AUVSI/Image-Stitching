@@ -32,7 +32,7 @@ void plotPositions(vector<CameraParams> cameras, string filename){
   }
 }
 
-vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename){
+vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename, int groundLevel){
 
   cout << "Reading image data file...\n";
 
@@ -61,7 +61,7 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
     double planeRoll = boost::lexical_cast<int>(parts[1].substr(1)) / 1000.0; 
     double planePitch = boost::lexical_cast<int>(parts[2].substr(1)) / 1000.0;
     double planeYaw = boost::lexical_cast<int>(parts[3].substr(1)) / 1000.0;
-    double planeAlt = boost::lexical_cast<int>(parts[4].substr(1)) / 100.0;
+    double planeAlt = boost::lexical_cast<int>(parts[4].substr(1)) / 100;
 
 
     int latWholePart = boost::lexical_cast<int>(parts[9]);
@@ -125,17 +125,20 @@ void printUsage(char* executableName){
            " --2nearest                     Use the bestOf2NearestMatcher\n";
 }
 
-void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<string>& imageFilenames){
+void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<string>& imageFilenames, double& groundLevel){
   for (int i = 2; i < argc; i++){
     string token(argv[i]);
-    if ( token == "--reg_resol"){
-      arguments.registrationResolution = boost::lexical_cast<double>(argv[i++]);
+    if ( token == "--ground_level"){
+      cout << "Ground level: " << argv[i+1] << endl;
+      groundLevel = boost::lexical_cast<double>(argv[++i]);
+    } else if ( token == "--reg_resol"){
+      arguments.registrationResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--seam_est_resol"){
-      arguments.seamEstimationResolution = boost::lexical_cast<double>(argv[i++]);
+      arguments.seamEstimationResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--compose_resol"){
-      arguments.compositingResolution = boost::lexical_cast<double>(argv[i++]);
+      arguments.compositingResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--conf_thresh"){
-      arguments.confidenceThreshold = boost::lexical_cast<double>(argv[i++]);
+      arguments.confidenceThreshold = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--wave-correct"){
       arguments.doWaveCorrect = true;
     } else if ( token == "--no-wave-correct"){
@@ -172,16 +175,17 @@ int main(int argc, char* argv[]){
   vector<string> imageFilenames;
 
 
+  double groundLevel = 97.0;
   /**
    * Get the command-line parameters
    */
-  parseArguments(argc,argv,gpsArgs,imageFilenames);
+  parseArguments(argc,argv,gpsArgs,imageFilenames,groundLevel);
 
   int numImages = imageFilenames.size();
 
   cout << "Preparing to stitch " << numImages << " images.\n";
 
-  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename);
+  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename, groundLevel);
   cout << "Images Loaded\n\n";
 
   double minLat = DBL_MAX;
