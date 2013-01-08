@@ -26,10 +26,9 @@ struct GPSStitcherArgs{
   cv::detail::SeamFinder* seamFinder =
     new cv::detail::GraphCutSeamFinder(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
 
-  cv::detail::ExposureCompensator* exposureCompensator = 
-    cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+  cv::detail::ExposureCompensator* exposureCompensator = new cv::detail::NoExposureCompensator();
 
-  cv::detail::Blender* blender = new cv::detail::FeatherBlender(false);
+  cv::detail::Blender* blender = new cv::detail::MultiBandBlender(false);
 
   cv::detail::BundleAdjusterBase* bundleAdjuster = new cv::detail::BundleAdjusterReproj();
 };
