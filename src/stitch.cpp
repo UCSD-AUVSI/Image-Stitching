@@ -30,7 +30,9 @@ void plotPositions(vector<CameraParams> cameras, string filename){
   }
 }
 
-vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename){
+vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, 
+                                             string dataFilename,
+                                             CameraArgs cameraArgs){
   cout << "Reading image data file...\n";
 
   ifstream imageData(dataFilename.c_str()); 
@@ -55,11 +57,19 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
      * For each of the parts below, the first character of the segment is 
      * removed. This character is the 'R', 'P', 'Y', or 'A' indicator
      */
-    double planeRoll = boost::lexical_cast<double>(parts[1].substr(1)) / 1000.0; 
-    double planePitch = boost::lexical_cast<double>(parts[2].substr(1)) / 1000.0;
-    double planeYaw = boost::lexical_cast<double>(parts[3].substr(1)) / 1000.0;
-    double planeAlt = boost::lexical_cast<double>(parts[4].substr(1));
 
+    string rollPart = parts[cameraArgs.telemOrder.find('R')+1].substr(1);
+    string pitchPart = parts[cameraArgs.telemOrder.find('P')+1].substr(1);
+    string yawPart = parts[cameraArgs.telemOrder.find('Y')+1].substr(1);
+    string altPart = parts[4].substr(1);
+
+    
+    double planeRoll = boost::lexical_cast<double>(rollPart) / 1000.0; 
+    double planePitch = boost::lexical_cast<double>(pitchPart) / 1000.0;
+    double planeYaw = boost::lexical_cast<double>(yawPart) / 1000.0;
+    double planeAlt = boost::lexical_cast<double>(altPart);
+
+    cout << "Alt Part: " << planeAlt << endl;
 
     int latWholePart = boost::lexical_cast<int>(parts[9]);
     int latFractionPart = boost::lexical_cast<int>(parts[10]);
@@ -98,7 +108,7 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
       cout << "Done\n";
       imagesWithData[i] = imageWithData;
     } else {
-      cout << "WARNING: Data for " << filename << "does not exist.\n";
+      cout << "WARNING: Data for " << filename << " does not exist.\n";
     }
   }
 
@@ -135,7 +145,9 @@ void parseArguments(int argc,
 
   for (int i = 2; i < argc; i++){
     string token(argv[i]);
-    if ( token == "--ground_level"){
+    if ( token == "--telem_order"){
+      cameraArgs.telemOrder = argv[++i];
+    } else if ( token == "--ground_level"){
       cameraArgs.groundLevel = boost::lexical_cast<double>(argv[++i]);
     } else if (token == "--lat-scale"){
       cameraArgs.latScale = boost::lexical_cast<double>(argv[++i]);
@@ -159,6 +171,8 @@ void parseArguments(int argc,
       gpsArgs.doWaveCorrect = false;
     } else if ( token == "--no-features"){
       gpsArgs.useFeatures = false;
+    } else if ( token == "--2nearest"){
+      gpsArgs.featuresMatcher = new detail::BestOf2NearestMatcher();
     } else if ( token == "--no-seam-finder"){
       gpsArgs.seamFinder = new detail::NoSeamFinder();
     } else if ( token == "--no-exposure-compensator"){
@@ -194,8 +208,9 @@ int main(int argc, char* argv[]){
    * Lon: 40e6 / 360
    * Alt: 1ft
    * CameraFocal: 200
+   * Telemetry Order: Roll Pitch Yaw
    */
-  CameraArgs cameraArgs = {97, 40e6 / 360, 40e6 / 360, 1, 200};
+  CameraArgs cameraArgs = {97, 40e6 / 360, 40e6 / 360, 1, 200, "RPY"};
   vector<string> imageFilenames;
 
   /**
@@ -208,7 +223,8 @@ int main(int argc, char* argv[]){
   cout << "Preparing to stitch " << numImages << " images.\n";
 
   vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,
-                                                                planeDataFilename);
+                                                                planeDataFilename,
+                                                                cameraArgs);
   cout << "Images Loaded\n\n";
 
   double minLat = DBL_MAX;

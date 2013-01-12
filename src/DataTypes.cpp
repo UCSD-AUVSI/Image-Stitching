@@ -68,10 +68,11 @@ cv::detail::CameraParams ImageWithPlaneData::getCameraParams(double minLat,
   float y = lat * args.latScale; 
 
   /**
-   * The altitude must be greater than 0. Multiplies by the user-input scale, then
-   * adds 1 because PlaneWarpers warps onto the z = -1 plane.
+   * The altitude must be greater than 0. Multiplies by the user-input scale
    */
-  float z = max(0.0,(alt - args.groundLevel)) / FEET_PER_METER * args.altScale + 1; 
+  float z = max(0.0,(alt - args.groundLevel)) / FEET_PER_METER * args.altScale+1; 
+
+  cout << "Alt: " << z << endl;
   
   float translationMatrix[3][1] = {x,y,-z};
 

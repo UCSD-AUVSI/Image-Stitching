@@ -3,6 +3,7 @@
 
 #include <cv.h>
 #include <ostream>
+#include <string>
 #include "AdjacentFeaturesMatcher.h"
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/warpers.hpp>
@@ -34,6 +35,7 @@ struct GPSStitcherArgs{
 
 struct CameraArgs {
   double groundLevel, latScale, lonScale, altScale, focalLength;
+  std::string telemOrder;
 };
 
 struct ImageWithPlaneData {
