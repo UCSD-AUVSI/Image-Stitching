@@ -10,11 +10,9 @@
 #include <boost/algorithm/string.hpp>
 #include "AdjacentFeaturesMatcher.h"
 #include "GPSStitcher.h"
-#include "gpc.h"
 #include "DataTypes.h"
 #include "camera.h"
 #include "util.h"
-#include "test.h"
 
 #ifdef __WIN32__
 #include "gpc.c"
@@ -32,8 +30,7 @@ void plotPositions(vector<CameraParams> cameras, string filename){
   }
 }
 
-vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename, int groundLevel){
-
+vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, string dataFilename){
   cout << "Reading image data file...\n";
 
   ifstream imageData(dataFilename.c_str()); 
@@ -58,19 +55,19 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
      * For each of the parts below, the first character of the segment is 
      * removed. This character is the 'R', 'P', 'Y', or 'A' indicator
      */
-    double planeRoll = boost::lexical_cast<int>(parts[1].substr(1)) / 1000.0; 
-    double planePitch = boost::lexical_cast<int>(parts[2].substr(1)) / 1000.0;
-    double planeYaw = boost::lexical_cast<int>(parts[3].substr(1)) / 1000.0;
-    double planeAlt = boost::lexical_cast<int>(parts[4].substr(1)) / 100;
+    double planeRoll = boost::lexical_cast<double>(parts[1].substr(1)) / 1000.0; 
+    double planePitch = boost::lexical_cast<double>(parts[2].substr(1)) / 1000.0;
+    double planeYaw = boost::lexical_cast<double>(parts[3].substr(1)) / 1000.0;
+    double planeAlt = boost::lexical_cast<double>(parts[4].substr(1));
 
 
     int latWholePart = boost::lexical_cast<int>(parts[9]);
     int latFractionPart = boost::lexical_cast<int>(parts[10]);
-    double planeLat = (double)latWholePart + (double)latFractionPart / 1000000;
+    double planeLat = (double)latWholePart + (double)latFractionPart / 1000000.0;
 
     int lonWholePart = boost::lexical_cast<int>(parts[11]);
     int lonFractionPart = boost::lexical_cast<int>(parts[12]);
-    double planeLon = (double)lonWholePart + (double)lonFractionPart / 1000000;
+    double planeLon = (double)lonWholePart + (double)lonFractionPart / 1000000.0;
 
     double gimbalRoll = 0;
     double gimbalPitch = 0;
@@ -111,6 +108,11 @@ vector<ImageWithPlaneData> getImagesWithData(vector<string> imageFilenames, stri
 void printUsage(char* executableName){
   cout << "\nUsage: " << executableName << " planeDataFile [options] image1 [image2 ...]\n";
   cout << "\nOptions:\n"
+           " --ground_level level[97]       Set the ground level in ft\n"
+           " --lat_scale scale[111111]      Set the latitude camera param scale\n"
+           " --lon_scale scale[111111]      Set the longitude camera param scale \n"
+           " --alt_scale scale[1]           Set the altitude camera scale\n"
+           " --camera_focal length[200]     Set the camera focal length\n"
            " --reg_resol resolution         Set registration resolution\n" 
            " --seam_est_resol resolution    Set seam estimation resolution\n"
            " --compose_resol resolution     Set composition resolution\n"
@@ -121,42 +123,55 @@ void printUsage(char* executableName){
            " --no-seam-finder               Do not do seam finding\n"
            " --no-exposure-compensator      Do not do exposure compensation\n"
            " --bundle-adjuster-ray          Use the ray bundle adjuster\n"
-           " --no-bundle-adjust             Do not do bundle adjustment\n";
+           " --no-bundle-adjust             Do not do bundle adjustment\n"
            " --2nearest                     Use the bestOf2NearestMatcher\n";
 }
 
-void parseArguments(int argc, char* argv[], GPSStitcherArgs& arguments, vector<string>& imageFilenames, double& groundLevel){
+void parseArguments(int argc,
+                    char* argv[],
+                    GPSStitcherArgs& gpsArgs,
+                    CameraArgs& cameraArgs,
+                    vector<string>& imageFilenames){ 
+
   for (int i = 2; i < argc; i++){
     string token(argv[i]);
     if ( token == "--ground_level"){
-      cout << "Ground level: " << argv[i+1] << endl;
-      groundLevel = boost::lexical_cast<double>(argv[++i]);
+      cameraArgs.groundLevel = boost::lexical_cast<double>(argv[++i]);
+    } else if (token == "--lat-scale"){
+      cameraArgs.latScale = boost::lexical_cast<double>(argv[++i]);
+    } else if (token == "--lon-scale"){
+      cameraArgs.lonScale = boost::lexical_cast<double>(argv[++i]);
+    } else if (token == "--alt-scale"){
+      cameraArgs.altScale = boost::lexical_cast<double>(argv[++i]);
+    } else if (token == "--camera_focal"){
+      cameraArgs.focalLength = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--reg_resol"){
-      arguments.registrationResolution = boost::lexical_cast<double>(argv[++i]);
+      gpsArgs.registrationResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--seam_est_resol"){
-      arguments.seamEstimationResolution = boost::lexical_cast<double>(argv[++i]);
+      gpsArgs.seamEstimationResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--compose_resol"){
-      arguments.compositingResolution = boost::lexical_cast<double>(argv[++i]);
+      gpsArgs.compositingResolution = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--conf_thresh"){
-      arguments.confidenceThreshold = boost::lexical_cast<double>(argv[++i]);
+      gpsArgs.confidenceThreshold = boost::lexical_cast<double>(argv[++i]);
     } else if ( token == "--wave-correct"){
-      arguments.doWaveCorrect = true;
+      gpsArgs.doWaveCorrect = true;
     } else if ( token == "--no-wave-correct"){
-      arguments.doWaveCorrect = false;
+      gpsArgs.doWaveCorrect = false;
     } else if ( token == "--no-features"){
-      arguments.useFeatures = false;
+      gpsArgs.useFeatures = false;
     } else if ( token == "--no-seam-finder"){
-      arguments.seamFinder = new detail::NoSeamFinder();
+      gpsArgs.seamFinder = new detail::NoSeamFinder();
     } else if ( token == "--no-exposure-compensator"){
-      arguments.exposureCompensator = new detail::NoExposureCompensator();
+      gpsArgs.exposureCompensator = new detail::NoExposureCompensator();
     } else if ( token == "--bundle-adjuster-ray"){
-      arguments.bundleAdjuster == new detail::BundleAdjusterRay();
+      gpsArgs.bundleAdjuster == new detail::BundleAdjusterRay();
     } else if ( token == "--no-bundle-adjust"){
-      arguments.doBundleAdjust = false;
+      gpsArgs.doBundleAdjust = false;
     } else {
       imageFilenames.push_back(token);
     }
   }
+
 }
 
 int main(int argc, char* argv[]){
@@ -172,20 +187,28 @@ int main(int argc, char* argv[]){
   string planeDataFilename(argv[1]);
 
   GPSStitcherArgs gpsArgs;
+
+  /**
+   * Groundlevel: 97.0ft
+   * Lat: 40e6 / 360
+   * Lon: 40e6 / 360
+   * Alt: 1ft
+   * CameraFocal: 200
+   */
+  CameraArgs cameraArgs = {97, 40e6 / 360, 40e6 / 360, 1, 200};
   vector<string> imageFilenames;
 
-
-  double groundLevel = 97.0;
   /**
    * Get the command-line parameters
    */
-  parseArguments(argc,argv,gpsArgs,imageFilenames,groundLevel);
+  parseArguments(argc,argv,gpsArgs,cameraArgs,imageFilenames);
 
   int numImages = imageFilenames.size();
 
   cout << "Preparing to stitch " << numImages << " images.\n";
 
-  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,planeDataFilename, groundLevel);
+  vector<ImageWithPlaneData> imagesWithData = getImagesWithData(imageFilenames,
+                                                                planeDataFilename);
   cout << "Images Loaded\n\n";
 
   double minLat = DBL_MAX;
@@ -198,7 +221,11 @@ int main(int argc, char* argv[]){
   vector<CameraParams> cameras(numImages);
 
   for (int i = 0; i < numImages; i++ ){
-    cameras[i] = imagesWithData[i].getCameraParams(minLat,minLon);
+    cameras[i] = imagesWithData[i].getCameraParams(minLat,minLon,cameraArgs);
+
+    cout << "Image " << i << " roll: " << imagesWithData[i].roll << endl;
+    cout << "Image " << i << " pitch: " << imagesWithData[i].pitch << endl;
+    cout << "Image " << i << " yaw: " << imagesWithData[i].yaw << endl << endl;
   }
 
   plotPositions(cameras,"positions");
@@ -221,4 +248,3 @@ int main(int argc, char* argv[]){
   
   return 0;
 }
-

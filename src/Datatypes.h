@@ -3,7 +3,6 @@
 
 #include <cv.h>
 #include <ostream>
-#include "gpc.h"
 #include "AdjacentFeaturesMatcher.h"
 #include <opencv2/stitching/stitcher.hpp>
 #include <opencv2/stitching/warpers.hpp>
@@ -33,48 +32,9 @@ struct GPSStitcherArgs{
   cv::detail::BundleAdjusterBase* bundleAdjuster = new cv::detail::BundleAdjusterReproj();
 };
 
-struct Pixel {
-  int x;
-  int y;
-  Pixel(int x, int y): x(x),y(y){}
-
-  /**
-   * Converts this pixel to an OpenCV Point2f
-   */
-  cv::Point2f toPoint2f();
-  cv::KeyPoint toKeyPoint(double scale);
-
-
+struct CameraArgs {
+  double groundLevel, latScale, lonScale, altScale, focalLength;
 };
-
-/**
-std::ostream& operator<<(std::ostream &strm, Pixel &pixel) {
-  return strm << "Pixel(" << pixel.x << ", " << pixel.y <<")";
-};
-**/
-
-struct LatLon {
-  double lat;
-  double lon;
-
-  LatLon(gpc_vertex vertex);
-  LatLon(double lat, double lon): lat(lat),lon(lon){}
-  /**
-   * Converts this GPS point to a gpc_vertex
-   */
-  gpc_vertex toGPCVertex();
-
-  /**
-   * Converts this GPS point to an openCV point2i for use as a descriptor
-   */
-  cv::Point2i toPoint2i();
-};
-
-/**
-std::ostream& operator<<(std::ostream &strm, const LatLon &latlon) {
-  return strm << "LatLon(" << latlon.lat << ", " << latlon.lon <<")";
-};
-**/
 
 struct ImageWithPlaneData {
   cv::Mat image;
@@ -99,41 +59,8 @@ struct ImageWithPlaneData {
                         yaw(yaw),
                         gimbalRoll(gimbalRoll),
                         gimbalPitch(gimbalPitch){}
-  gpc_polygon* toGPCPolygon();
 
-  /**
-   * Returns the pixel in the image that is closest to the given point
-   */
-  Pixel getPixelFor(LatLon latlon);
-
-  cv::detail::CameraParams getCameraParams(double minLat, double minLon) const;
-};
-
-struct GPSExtremes {
-  double minLat;
-  double minLon;
-  double maxLat;
-  double maxLon;
-  GPSExtremes(gpc_polygon* polygon);
-  GPSExtremes(double minLat, double minLon, double maxLat, double maxLon):
-                minLat(minLat),
-                minLon(minLon),
-                maxLat(maxLat),
-                maxLon(maxLon) {}
-
-};
-
-struct PixelExtremes {
-  double minX;
-  double minY;
-  double maxX;
-  double maxY;
-  PixelExtremes(double minX, double minY, double maxX, double maxY):
-                minX(minX),
-                minY(minY),
-                maxX(maxX),
-                maxY(maxY) {}
-
+  cv::detail::CameraParams getCameraParams(double minLat, double minLon, CameraArgs args) const;
 };
 
 #endif
